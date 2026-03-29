@@ -20,7 +20,7 @@ export function Header({ providerLabel, context, targetLanguage, onOpenSettings 
           </div>
         </div>
 
-        <div className="absolute left-1/2 hidden -translate-x-1/2 rounded-lg border border-subtle px-3 text-sm text-muted md:inline-flex md:h-10 md:items-center">
+        <div className="absolute left-1/2 hidden -translate-x-1/2 text-sm text-muted md:inline-flex md:items-center">
           {providerLabel} · {targetLanguage} · {context}
         </div>
 
