@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" class="preload">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Worven is a client-side translator that uses LLM APIs for word and sentence translation."
+    />
+    <title>Worven</title>
+    <script>
+      (() => {
+        try {
+          const raw = localStorage.getItem('worven-settings');
+          const parsed = raw ? JSON.parse(raw) : null;
+          const mode = parsed?.themeMode ?? 'system';
+          const prefersDark =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const resolved = mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
+          if (resolved === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body class="preload">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

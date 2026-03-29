@@ -1,0 +1,352 @@
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --color-app-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-alt: #f4f4f5;
+  --color-chip-bg: rgba(17, 24, 39, 0.06);
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #6b7280;
+  --color-text-inverse: #ffffff;
+
+  --color-border-subtle: #e5e7eb;
+  --color-border-strong: #d1d5db;
+  --color-border-contrast: #111827;
+
+  --accent-light: #0f0f0f;
+  --accent-contrast-light: #ffffff;
+  --color-accent: var(--accent-light);
+  --color-accent-contrast: var(--accent-contrast-light);
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 80%, var(--color-surface));
+
+  --color-success: #059669;
+  --color-danger: #ef4444;
+  --color-warning: #f97316;
+  --color-success-soft: color-mix(in srgb, var(--color-success) 35%, var(--color-surface));
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 35%, var(--color-surface));
+  --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 60%, #ffffff);
+
+  --color-overlay: rgba(17, 24, 39, 0.68);
+  --shadow-elevated: 0 12px 24px rgba(15, 23, 42, 0.12);
+  --shadow-hover: 0 6px 14px rgba(15, 23, 42, 0.14);
+}
+
+.dark {
+  color-scheme: dark;
+  --color-app-bg: #050505;
+  --color-surface: #050505;
+  --color-surface-elevated: rgba(5, 5, 5, 0.84);
+  --color-surface-alt: #0d0d0f;
+  --color-chip-bg: rgba(244, 244, 245, 0.08);
+
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #d1d5db;
+  --color-text-tertiary: #9ca3af;
+  --color-text-inverse: #050505;
+
+  --color-border-subtle: rgba(148, 163, 184, 0.26);
+  --color-border-strong: rgba(148, 163, 184, 0.4);
+  --color-border-contrast: #f9fafb;
+
+  --accent-dark: #e5e7eb;
+  --accent-contrast-dark: #050505;
+  --color-accent: var(--accent-dark);
+  --color-accent-contrast: var(--accent-contrast-dark);
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+
+  --color-success: #34d399;
+  --color-danger: #f87171;
+  --color-warning: #fb923c;
+  --color-success-soft: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
+  --color-subtle-hover: color-mix(in srgb, var(--color-text-primary) 8%, var(--color-app-bg));
+
+  --color-overlay: rgba(0, 0, 0, 0.78);
+  --shadow-elevated: 0 22px 44px rgba(2, 6, 23, 0.42);
+  --shadow-hover: 0 14px 28px rgba(2, 6, 23, 0.38);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html,
+body,
+#root {
+  font-family:
+    'IBM Plex Sans',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-app-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+textarea,
+input,
+select,
+.allow-select {
+  user-select: text;
+}
+
+.preload *,
+.preload *::before,
+.preload *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+@layer utilities {
+  .bg-app {
+    background-color: var(--color-app-bg);
+  }
+
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+
+  .bg-surface-elevated {
+    background-color: var(--color-surface-elevated);
+  }
+
+  .bg-surface-alt {
+    background-color: var(--color-surface-alt);
+  }
+
+  .bg-subtle {
+    background-color: var(--color-surface-alt);
+  }
+
+  .bg-overlay {
+    background-color: var(--color-overlay);
+  }
+
+  .text-strong {
+    color: var(--color-text-primary);
+  }
+
+  .text-muted {
+    color: var(--color-text-secondary);
+  }
+
+  .text-border {
+    color: var(--color-border-strong);
+  }
+
+  .text-soft {
+    color: var(--color-text-tertiary);
+  }
+
+  .text-inverse {
+    color: var(--color-text-inverse);
+  }
+
+  .text-accent {
+    color: var(--color-accent);
+  }
+
+  .bg-accent {
+    background-color: var(--color-accent);
+    color: var(--color-accent-contrast);
+  }
+
+  .border-subtle {
+    border-color: var(--color-border-subtle);
+  }
+
+  .border-accent {
+    border-color: var(--color-accent);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .hover-nonaccent {
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  @layer utilities {
+    .hover-nonaccent:hover {
+      background-color: var(--color-subtle-hover);
+      color: var(--color-text-primary);
+    }
+
+    .hover-accent-fade:hover {
+      opacity: 0.9;
+    }
+  }
+}
+
+@layer components {
+  .panel-shell {
+    @apply rounded-2xl border border-subtle bg-surface-elevated shadow-sm;
+  }
+
+  .icon-button {
+    @apply grid h-10 w-10 place-items-center rounded-lg border border-subtle bg-transparent text-muted transition;
+  }
+
+  .icon-button:hover {
+    @apply hover-nonaccent;
+  }
+
+  .action-button {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-transparent px-3 text-sm font-medium text-inverse transition;
+    background-color: var(--color-accent);
+  }
+
+  .action-button:hover {
+    @apply hover-accent-fade;
+  }
+
+  .action-button:disabled {
+    @apply cursor-not-allowed opacity-60;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .secondary-button {
+    @apply inline-flex h-10 items-center justify-center rounded-lg border border-subtle bg-transparent px-3 text-sm font-medium text-strong transition;
+  }
+
+  .secondary-button:hover {
+    @apply hover-nonaccent;
+  }
+
+  .field-label {
+    @apply mb-2 block text-xs uppercase tracking-[0.24em] text-muted;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-subtle bg-transparent px-3 py-2 text-strong outline-none transition;
+  }
+
+  .textarea-field {
+    @apply w-full rounded-xl border border-subtle bg-transparent px-3 py-2 text-base leading-7 text-strong outline-none transition;
+    resize: vertical;
+  }
+
+  .translator-textarea {
+    @apply min-h-[24rem] w-full resize-none border-0 bg-transparent p-0 pr-14 text-xl leading-tight text-strong outline-none sm:text-2xl;
+  }
+
+  .translator-textarea::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  .input-field:focus,
+  .textarea-field:focus,
+  .select-field:focus {
+    border-color: color-mix(in srgb, var(--color-accent) 46%, var(--color-border-subtle));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 12%, transparent);
+  }
+
+  .translator-textarea:focus,
+  .target-language-trigger:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .select-field {
+    @apply h-10 w-full appearance-none rounded-lg border border-subtle bg-transparent px-3 pr-8 text-sm text-strong outline-none transition;
+  }
+
+  .select-icon {
+    @apply pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium tracking-[0.08em] text-strong;
+    background-color: var(--color-chip-bg);
+  }
+
+  .translate-pill {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-full border border-transparent px-5 text-sm font-medium text-inverse transition;
+    background-color: var(--color-accent);
+  }
+
+  .translate-pill:hover {
+    @apply hover-accent-fade;
+  }
+
+  .translate-pill:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .target-language-trigger {
+    @apply inline-flex items-center border-0 bg-transparent px-0 text-center text-base font-semibold uppercase tracking-[0.08em] text-strong outline-none;
+  }
+
+  .language-menu-anchor {
+    @apply absolute left-1/2 top-full z-20 mt-3 -translate-x-1/2;
+  }
+
+  .language-menu {
+    @apply w-60 overflow-hidden rounded-2xl border border-subtle bg-surface-elevated shadow-elevated;
+  }
+
+  .language-menu-scroll {
+    max-height: 16rem;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+
+  .language-menu-item {
+    @apply flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-strong transition;
+  }
+
+  .language-menu-item:hover {
+    background-color: var(--color-surface-alt);
+  }
+
+  .language-menu-item-active {
+    background-color: var(--color-accent-soft);
+  }
+}
