@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Languages, Sparkles } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import type { TranslationResult } from '../types';
 
@@ -20,12 +19,6 @@ const cardMotion = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.18 } },
 };
 
-const dropdownMotion = {
-  initial: { opacity: 0, y: 6, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.16 } },
-  exit: { opacity: 0, y: -6, scale: 0.98, transition: { duration: 0.14 } },
-};
-
 export function OutputPanel({
   result,
   isLoading,
@@ -35,87 +28,22 @@ export function OutputPanel({
   onTargetLanguageChange,
   onShowAlternative,
 }: OutputPanelProps) {
-  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
-  const languageMenuRef = useRef<HTMLDivElement | null>(null);
-  const languageButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    if (!languageMenuOpen) return;
-
-    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (
-        languageMenuRef.current?.contains(target) ||
-        languageButtonRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setLanguageMenuOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setLanguageMenuOpen(false);
-        languageButtonRef.current?.focus();
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('touchstart', handlePointerDown);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('touchstart', handlePointerDown);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [languageMenuOpen]);
-
   return (
     <section className="panel-shell overflow-hidden">
       <div className="border-b border-subtle px-6 py-5 text-center">
-        <div className="relative inline-flex items-center">
-          <button
-            ref={languageButtonRef}
-            type="button"
-            className="target-language-trigger"
-            onClick={() => setLanguageMenuOpen((open) => !open)}
-            aria-haspopup="listbox"
-            aria-expanded={languageMenuOpen}
+        <div className="inline-flex items-center">
+          <select
+            value={targetLanguage}
+            onChange={(event) => onTargetLanguageChange(event.target.value)}
+            className="target-language-select"
+            aria-label="Target language"
           >
-            <span>{targetLanguage}</span>
-          </button>
-
-          <AnimatePresence>
-            {languageMenuOpen ? (
-              <div className="language-menu-anchor">
-                <motion.div
-                  ref={languageMenuRef}
-                  className="language-menu"
-                  role="listbox"
-                  aria-label="Target language"
-                  {...dropdownMotion}
-                >
-                  <div className="language-menu-scroll">
-                    {SUPPORTED_LANGUAGES.map((language) => (
-                      <button
-                        key={language}
-                        type="button"
-                        className={`language-menu-item ${language === targetLanguage ? 'language-menu-item-active' : ''}`}
-                        onClick={() => {
-                          onTargetLanguageChange(language);
-                          setLanguageMenuOpen(false);
-                        }}
-                      >
-                        {language}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              </div>
-            ) : null}
-          </AnimatePresence>
+            {SUPPORTED_LANGUAGES.map((language) => (
+              <option key={language} value={language}>
+                {language}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
