@@ -172,14 +172,16 @@ export default function App() {
               </div>
 
               <div className="relative min-h-[29rem] px-6 py-5">
-                <button
-                  type="button"
-                  onClick={clearInput}
-                  className="absolute right-6 top-5 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-subtle hover:text-strong"
-                  aria-label="Clear text"
-                >
-                  <X className="h-6 w-6" />
-                </button>
+                {sourceText.trim() ? (
+                  <button
+                    type="button"
+                    onClick={clearInput}
+                    className="absolute right-6 top-5 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-subtle hover:text-strong"
+                    aria-label="Clear text"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                ) : null}
 
                 <textarea
                   id="source-text"
