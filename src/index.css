@@ -274,11 +274,15 @@ select,
   }
 
   .translator-textarea {
-    @apply min-h-[24rem] w-full resize-none border-0 bg-transparent p-0 pr-14 text-xl leading-tight text-strong outline-none sm:text-2xl;
+    @apply min-h-[24rem] w-full resize-none border-0 bg-transparent p-0 pr-14 leading-tight text-strong outline-none;
   }
 
   .translator-textarea::placeholder {
     color: var(--color-text-tertiary);
+  }
+
+  .translator-textarea-size-default {
+    @apply text-xl sm:text-2xl;
   }
 
   .input-field:focus,

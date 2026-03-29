@@ -172,20 +172,9 @@ export default function App() {
               </div>
 
               <div className="relative min-h-[29rem] px-6 py-5">
-                {sourceText.trim() ? (
-                  <button
-                    type="button"
-                    onClick={clearInput}
-                    className="absolute right-6 top-5 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted transition hover:bg-subtle hover:text-strong"
-                    aria-label="Clear text"
-                  >
-                    <X className="h-6 w-6" />
-                  </button>
-                ) : null}
-
                 <textarea
                   id="source-text"
-                  className="translator-textarea"
+                  className="translator-textarea translator-textarea-size-default"
                   value={sourceText}
                   onChange={(event) => setSourceText(event.target.value)}
                   onKeyDown={handleTextareaKeyDown}
@@ -194,7 +183,19 @@ export default function App() {
                 />
 
                 <div className="absolute bottom-5 left-6 right-6 flex items-end justify-between gap-4">
-                  <div className="text-sm text-soft">{sourceText.length}</div>
+                  <div>
+                    {sourceText.trim() ? (
+                      <button
+                        type="button"
+                        onClick={clearInput}
+                        className="secondary-button h-12 rounded-full px-4"
+                        aria-label="Clear text"
+                      >
+                        <X className="h-4 w-4" />
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
 
                   <button
                     type="button"
