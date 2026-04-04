@@ -115,10 +115,7 @@ export function OutputPanel({
                 )}
               </motion.div>
             ) : (
-              <motion.div
-                {...cardMotion}
-                className="grid min-h-[15rem] place-items-center text-center"
-              >
+              <div className="grid min-h-[15rem] place-items-center text-center">
                 <div className="max-w-sm space-y-4">
                   <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">
                     <Languages className="h-7 w-7" />
@@ -127,7 +124,7 @@ export function OutputPanel({
                     <p className="text-lg font-medium text-strong">Ready</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
           </AnimatePresence>
         )}

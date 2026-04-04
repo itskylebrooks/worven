@@ -21,9 +21,9 @@
 :root {
   color-scheme: light;
   --color-app-bg: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-surface-alt: #f4f4f5;
+  --color-surface: #fcfcfc;
+  --color-surface-elevated: #fbfbfb;
+  --color-surface-alt: #f6f6f7;
   --color-chip-bg: rgba(17, 24, 39, 0.06);
 
   --color-text-primary: #111827;
@@ -56,9 +56,9 @@
 .dark {
   color-scheme: dark;
   --color-app-bg: #050505;
-  --color-surface: #050505;
-  --color-surface-elevated: rgba(5, 5, 5, 0.84);
-  --color-surface-alt: #0d0d0f;
+  --color-surface: #0c0c0e;
+  --color-surface-elevated: #101014;
+  --color-surface-alt: #17171c;
   --color-chip-bg: rgba(244, 244, 245, 0.08);
 
   --color-text-primary: #f3f4f6;
