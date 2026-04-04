@@ -74,6 +74,7 @@ export interface TranslationHistoryItem {
   createdAt: string;
   sourceText: string;
   result: TranslationResult;
+  sentenceAlternatives?: string[];
   provider: ProviderId;
   model: string;
   nativeLanguage: string;

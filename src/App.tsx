@@ -8,7 +8,13 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { WordDetailsPanel } from './components/WordDetailsPanel';
 import { SUPPORTED_LANGUAGES } from './constants/languages';
 import { classifyInput } from './lib/classifier';
-import { addHistoryItem, clearHistory, loadHistory, removeHistoryItem } from './lib/history';
+import {
+  addHistoryItem,
+  clearHistory,
+  loadHistory,
+  removeHistoryItem,
+  updateHistoryItem,
+} from './lib/history';
 import { translateWithProvider } from './lib/providers';
 import {
   applyTheme,
@@ -38,6 +44,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAlternative, setIsLoadingAlternative] = useState(false);
   const [historyItems, setHistoryItems] = useState<TranslationHistoryItem[]>(() => loadHistory());
+  const [activeHistoryItemId, setActiveHistoryItemId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -131,6 +138,7 @@ export default function App() {
     setIsLoading(true);
     setIsLoadingAlternative(false);
     setSentenceAlternatives([]);
+    setActiveHistoryItemId(null);
 
     const mode = classifyInput(trimmed);
     const requestVersion = ++requestVersionRef.current;
@@ -153,21 +161,29 @@ export default function App() {
         data: payload as TranslationResult['data'],
         sourceText: trimmed,
       } as TranslationResult;
+      const nextHistoryItemId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const initialSentenceAlternatives =
+        nextResult.mode === 'sentence' && nextResult.data.alternative
+          ? [nextResult.data.alternative]
+          : [];
 
       if (requestVersion !== requestVersionRef.current) {
         return;
       }
 
       setResult(nextResult);
+      setSentenceAlternatives(initialSentenceAlternatives);
+      setActiveHistoryItemId(nextHistoryItemId);
       setHistoryItems(
         addHistoryItem({
-          id:
-            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-              ? crypto.randomUUID()
-              : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          id: nextHistoryItemId,
           createdAt: new Date().toISOString(),
           sourceText: trimmed,
           result: nextResult,
+          sentenceAlternatives: initialSentenceAlternatives,
           provider: settings.provider,
           model: settings.model,
           nativeLanguage: settings.nativeLanguage,
@@ -227,7 +243,20 @@ export default function App() {
       });
       const nextAlternative = payload.alternative?.trim();
       if (nextAlternative) {
-        setSentenceAlternatives((current) => [...current, nextAlternative]);
+        setSentenceAlternatives((current) => {
+          const nextAlternatives = [...current, nextAlternative];
+
+          if (activeHistoryItemId) {
+            setHistoryItems(
+              updateHistoryItem(activeHistoryItemId, (entry) => ({
+                ...entry,
+                sentenceAlternatives: nextAlternatives,
+              })),
+            );
+          }
+
+          return nextAlternatives;
+        });
       }
     } catch (translationError) {
       if (requestVersion !== requestVersionRef.current) {
@@ -253,6 +282,7 @@ export default function App() {
     setError(null);
     setResult(null);
     setSentenceAlternatives([]);
+    setActiveHistoryItemId(null);
     setSourceText('');
   }
 
@@ -278,12 +308,13 @@ export default function App() {
     setResult(null);
     setError(null);
     setSentenceAlternatives([]);
+    setActiveHistoryItemId(null);
   }
 
   const leftPanelLabel = directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
   const rightPanelLabel = directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
   const showSentenceAlternativePanel =
-    result?.mode === 'sentence' && (isLoadingAlternative || sentenceAlternatives.length > 0);
+    result?.mode === 'sentence' && sentenceAlternatives.length > 0;
 
   function flashCopied(key: string) {
     setCopiedKey(key);
@@ -327,10 +358,13 @@ export default function App() {
     setSourceText(item.sourceText);
     setResult(item.result);
     setSentenceAlternatives(
-      item.result.mode === 'sentence' && item.result.data.alternative
-        ? [item.result.data.alternative]
-        : [],
+      item.sentenceAlternatives && item.sentenceAlternatives.length > 0
+        ? item.sentenceAlternatives
+        : item.result.mode === 'sentence' && item.result.data.alternative
+          ? [item.result.data.alternative]
+          : [],
     );
+    setActiveHistoryItemId(item.id);
     setError(null);
     setHistoryOpen(false);
   }
@@ -477,23 +511,6 @@ export default function App() {
                   </p>
                 </section>
               ))}
-
-              {isLoadingAlternative ? (
-                <section className={`${panelAccent} px-6 py-5`}>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="word-section-label">Alternative</div>
-                    <AnimatedCopyButton
-                      copied={false}
-                      onClick={() => undefined}
-                      disabled
-                      className="icon-button opacity-50"
-                      ariaLabel="Copy alternative"
-                      title="Copy"
-                    />
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-muted">Loading alternative...</p>
-                </section>
-              ) : null}
             </div>
           ) : null}
 

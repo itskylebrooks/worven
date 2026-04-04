@@ -7,6 +7,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 function isTranslationHistoryItem(value: unknown): value is TranslationHistoryItem {
   if (!isRecord(value)) {
     return false;
@@ -21,11 +25,26 @@ function isTranslationHistoryItem(value: unknown): value is TranslationHistoryIt
     typeof value.nativeLanguage === 'string' &&
     typeof value.targetLanguage === 'string' &&
     typeof value.context === 'string' &&
+    (typeof value.sentenceAlternatives === 'undefined' || isStringArray(value.sentenceAlternatives)) &&
     (value.directionMode === 'source_to_target' || value.directionMode === 'target_to_native') &&
     isRecord(value.result) &&
     typeof value.result.mode === 'string' &&
     typeof value.result.sourceText === 'string'
   );
+}
+
+function normalizeHistoryItem(item: TranslationHistoryItem): TranslationHistoryItem {
+  if (Array.isArray(item.sentenceAlternatives)) {
+    return item;
+  }
+
+  return {
+    ...item,
+    sentenceAlternatives:
+      item.result.mode === 'sentence' && item.result.data.alternative
+        ? [item.result.data.alternative]
+        : [],
+  };
 }
 
 export function loadHistory(): TranslationHistoryItem[] {
@@ -44,7 +63,7 @@ export function loadHistory(): TranslationHistoryItem[] {
       return [];
     }
 
-    return parsed.filter(isTranslationHistoryItem);
+    return parsed.filter(isTranslationHistoryItem).map((item) => normalizeHistoryItem(item));
   } catch {
     return [];
   }
@@ -63,6 +82,15 @@ export function addHistoryItem(item: TranslationHistoryItem): TranslationHistory
     0,
     MAX_HISTORY_ITEMS,
   );
+  persistHistory(nextHistory);
+  return nextHistory;
+}
+
+export function updateHistoryItem(
+  id: string,
+  updater: (item: TranslationHistoryItem) => TranslationHistoryItem,
+): TranslationHistoryItem[] {
+  const nextHistory = loadHistory().map((entry) => (entry.id === id ? updater(entry) : entry));
   persistHistory(nextHistory);
   return nextHistory;
 }
