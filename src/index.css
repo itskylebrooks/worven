@@ -237,29 +237,6 @@ select,
     @apply hover-nonaccent;
   }
 
-  .action-button {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-transparent px-3 text-sm font-medium text-inverse transition;
-    background-color: var(--color-accent);
-  }
-
-  .action-button:hover {
-    @apply hover-accent-fade;
-  }
-
-  .action-button:disabled {
-    @apply cursor-not-allowed opacity-60;
-    box-shadow: none;
-    transform: none;
-  }
-
-  .secondary-button {
-    @apply inline-flex h-10 items-center justify-center rounded-lg border border-subtle bg-transparent px-3 text-sm font-medium text-strong transition;
-  }
-
-  .secondary-button:hover {
-    @apply hover-nonaccent;
-  }
-
   .field-label {
     @apply mb-2 block text-xs uppercase tracking-[0.24em] text-muted;
   }
@@ -341,19 +318,6 @@ select,
 
   .word-example-target {
     @apply mt-1 text-sm leading-6 text-muted;
-  }
-
-  .translate-pill {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-full border border-transparent px-5 text-sm font-medium text-inverse transition;
-    background-color: var(--color-accent);
-  }
-
-  .translate-pill:hover {
-    @apply hover-accent-fade;
-  }
-
-  .translate-pill:disabled {
-    @apply cursor-not-allowed opacity-60;
   }
 
   .target-language-select-shell {

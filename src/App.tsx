@@ -1,5 +1,5 @@
+import { ArrowRightLeft, Copy, Eraser, Languages, LoaderCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ArrowRightLeft, Copy } from 'lucide-react';
 import { Header } from './components/Header';
 import { HistoryPanel } from './components/HistoryPanel';
 import { OutputPanel } from './components/OutputPanel';
@@ -8,8 +8,8 @@ import { WordDetailsPanel } from './components/WordDetailsPanel';
 import { SUPPORTED_LANGUAGES } from './constants/languages';
 import { classifyInput } from './lib/classifier';
 import { addHistoryItem, clearHistory, loadHistory, removeHistoryItem } from './lib/history';
-import { applyTheme, loadSettings, persistSettings, PROVIDER_LABELS } from './lib/settings';
 import { translateWithProvider } from './lib/providers';
+import { applyTheme, loadSettings, persistSettings, PROVIDER_LABELS } from './lib/settings';
 import type {
   AppSettings,
   SentenceTranslationPayload,
@@ -19,7 +19,7 @@ import type {
   TranslationResult,
 } from './types';
 
-const panelAccent = 'rounded-[1.75rem] border border-subtle bg-surface-elevated shadow-sm';
+const panelAccent = 'panel-shell';
 
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
@@ -200,10 +200,8 @@ export default function App() {
     setSentenceAlternatives([]);
   }
 
-  const leftPanelLabel =
-    directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
-  const rightPanelLabel =
-    directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
+  const leftPanelLabel = directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
+  const rightPanelLabel = directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
   const showSentenceAlternativePanel =
     result?.mode === 'sentence' && (isLoadingAlternative || sentenceAlternatives.length > 0);
 
@@ -304,10 +302,11 @@ export default function App() {
                       <button
                         type="button"
                         onClick={clearInput}
-                        className="secondary-button h-10 rounded-full px-4"
+                        className="icon-button"
                         aria-label="Clear text"
+                        title="Clear"
                       >
-                        Clear
+                        <Eraser className="h-4 w-4" />
                       </button>
                     ) : null}
                   </div>
@@ -316,9 +315,15 @@ export default function App() {
                     type="button"
                     onClick={() => void handleTranslate()}
                     disabled={isLoading}
-                    className="translate-pill"
+                    className="icon-button"
+                    aria-label={isLoading ? 'Translating' : 'Translate'}
+                    title={isLoading ? 'Translating' : 'Translate'}
                   >
-                    {isLoading ? 'Translating...' : 'Translate'}
+                    {isLoading ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Languages className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>

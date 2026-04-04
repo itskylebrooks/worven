@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Copy, Languages, Sparkles } from 'lucide-react';
+import { Copy, Languages, LoaderCircle, RotateCcw, Sparkles } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import type { TranslationResult } from '../types';
 
@@ -73,7 +73,7 @@ export function OutputPanel({
             </div>
           </div>
         ) : error ? (
-          <div className="rounded-2xl bg-subtle p-4 text-sm text-strong">{error}</div>
+          <div className="panel-shell p-4 text-sm text-strong">{error}</div>
         ) : (
           <AnimatePresence mode="wait">
             {result ? (
@@ -127,9 +127,17 @@ export function OutputPanel({
                           type="button"
                           onClick={onShowAlternative}
                           disabled={isLoadingAlternative}
-                          className="secondary-button h-10 rounded-full px-4"
+                          className="icon-button"
+                          aria-label={
+                            isLoadingAlternative ? 'Loading alternative' : 'Show alternative'
+                          }
+                          title={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
                         >
-                          {isLoadingAlternative ? 'Loading...' : 'Show alternative'}
+                          {isLoadingAlternative ? (
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
