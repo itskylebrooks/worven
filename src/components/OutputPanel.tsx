@@ -1,4 +1,3 @@
-import { AnimatePresence, motion } from 'framer-motion';
 import { Languages, LoaderCircle, RotateCcw, Sparkles } from 'lucide-react';
 import { AnimatedCopyButton } from './AnimatedCopyButton';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
@@ -17,12 +16,6 @@ interface OutputPanelProps {
   onCopyTranslation: () => void;
   onShowAlternative: () => void;
 }
-
-const cardMotion = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.22 } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.18 } },
-};
 
 export function OutputPanel({
   result,
@@ -79,82 +72,74 @@ export function OutputPanel({
           <div className="panel-content">
             <div className="panel-shell p-4 text-sm text-strong">{error}</div>
           </div>
+        ) : !result ? (
+          <div className="panel-content">
+            <div className="grid h-full place-items-center text-center">
+              <div className="max-w-sm space-y-4">
+                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">
+                  <Languages className="h-7 w-7" />
+                </div>
+                <div>
+                  <p className="text-lg font-medium text-strong">Ready</p>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             <div className="panel-content">
-              <AnimatePresence mode="wait">
-                {result ? (
-                  <motion.div
-                    key={`${result.mode}:${result.sourceText}`}
-                    {...cardMotion}
-                    className="flex h-full min-h-0 flex-col overflow-hidden"
-                  >
-                    {result.mode === 'word' ? (
-                      <div className="translation-scroll-area">
-                        <div className="translation-main-text font-medium leading-tight text-strong">
-                          {result.data.primary}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="translation-scroll-area">
-                        <div className="translation-main-text translation-main-text-preserve font-medium leading-tight text-strong">
-                          {result.data.translation}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
+              <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                {result.mode === 'word' ? (
+                  <div className="translation-scroll-area">
+                    <div className="translation-main-text font-medium leading-tight text-strong">
+                      {result.data.primary}
+                    </div>
+                  </div>
                 ) : (
-                  <div className="grid h-full place-items-center text-center">
-                    <div className="max-w-sm space-y-4">
-                      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">
-                        <Languages className="h-7 w-7" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium text-strong">Ready</p>
-                      </div>
+                  <div className="translation-scroll-area">
+                    <div className="translation-main-text translation-main-text-preserve font-medium leading-tight text-strong">
+                      {result.data.translation}
                     </div>
                   </div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
 
-            {result ? (
-              result.mode === 'word' ? (
-                <div className="panel-actions justify-start">
-                  <div className="flex items-center justify-start gap-4">
-                    <AnimatedCopyButton
-                      copied={isTranslationCopied}
-                      onClick={onCopyTranslation}
-                      ariaLabel="Copy translation"
-                      title={isTranslationCopied ? 'Copied' : 'Copy'}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="panel-actions">
+            {result.mode === 'word' ? (
+              <div className="panel-actions justify-start">
+                <div className="flex items-center justify-start gap-4">
                   <AnimatedCopyButton
                     copied={isTranslationCopied}
                     onClick={onCopyTranslation}
                     ariaLabel="Copy translation"
                     title={isTranslationCopied ? 'Copied' : 'Copy'}
                   />
-                  <button
-                    type="button"
-                    onClick={onShowAlternative}
-                    disabled={isLoadingAlternative}
-                    className="icon-button"
-                    aria-label={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
-                    title={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
-                  >
-                    {isLoadingAlternative ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4" />
-                    )}
-                  </button>
                 </div>
-              )
-            ) : null}
+              </div>
+            ) : (
+              <div className="panel-actions">
+                <AnimatedCopyButton
+                  copied={isTranslationCopied}
+                  onClick={onCopyTranslation}
+                  ariaLabel="Copy translation"
+                  title={isTranslationCopied ? 'Copied' : 'Copy'}
+                />
+                <button
+                  type="button"
+                  onClick={onShowAlternative}
+                  disabled={isLoadingAlternative}
+                  className="icon-button"
+                  aria-label={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
+                  title={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
+                >
+                  {isLoadingAlternative ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

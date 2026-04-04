@@ -27,7 +27,6 @@ import type {
 } from './types';
 
 const panelAccent = 'panel-shell';
-
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettingsSnapshot());
   const [settingsHydrated, setSettingsHydrated] = useState(false);
@@ -44,6 +43,7 @@ export default function App() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyTimeoutRef = useRef<number | null>(null);
   const hasLocalSettingsChanges = useRef(false);
+  const requestVersionRef = useRef(0);
 
   function updateSettings(next: React.SetStateAction<AppSettings>) {
     hasLocalSettingsChanges.current = true;
@@ -133,6 +133,7 @@ export default function App() {
     setSentenceAlternatives([]);
 
     const mode = classifyInput(trimmed);
+    const requestVersion = ++requestVersionRef.current;
 
     try {
       const payload = await runTranslation({
@@ -153,6 +154,10 @@ export default function App() {
         sourceText: trimmed,
       } as TranslationResult;
 
+      if (requestVersion !== requestVersionRef.current) {
+        return;
+      }
+
       setResult(nextResult);
       setHistoryItems(
         addHistoryItem({
@@ -172,6 +177,10 @@ export default function App() {
         }),
       );
     } catch (translationError) {
+      if (requestVersion !== requestVersionRef.current) {
+        return;
+      }
+
       setResult(null);
       setError(
         translationError instanceof Error
@@ -179,7 +188,9 @@ export default function App() {
           : 'Translation failed for an unknown reason.',
       );
     } finally {
-      setIsLoading(false);
+      if (requestVersion === requestVersionRef.current) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -190,6 +201,7 @@ export default function App() {
 
     setError(null);
     setIsLoadingAlternative(true);
+    const requestVersion = ++requestVersionRef.current;
 
     try {
       const payload = (await runTranslation({
@@ -200,6 +212,10 @@ export default function App() {
         mode: 'sentence',
         requestAlternative: true,
       })) as SentenceTranslationPayload;
+
+      if (requestVersion !== requestVersionRef.current) {
+        return;
+      }
 
       setResult({
         mode: 'sentence',
@@ -214,21 +230,30 @@ export default function App() {
         setSentenceAlternatives((current) => [...current, nextAlternative]);
       }
     } catch (translationError) {
+      if (requestVersion !== requestVersionRef.current) {
+        return;
+      }
+
       setError(
         translationError instanceof Error
           ? translationError.message
           : 'Could not load an alternative translation.',
       );
     } finally {
-      setIsLoadingAlternative(false);
+      if (requestVersion === requestVersionRef.current) {
+        setIsLoadingAlternative(false);
+      }
     }
   }
 
   function clearInput() {
-    setSourceText('');
+    requestVersionRef.current += 1;
+    setIsLoading(false);
+    setIsLoadingAlternative(false);
     setError(null);
     setResult(null);
     setSentenceAlternatives([]);
+    setSourceText('');
   }
 
   function handleTextareaKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -244,9 +269,12 @@ export default function App() {
   }
 
   function toggleDirectionMode() {
+    requestVersionRef.current += 1;
     setDirectionMode((current) =>
       current === 'source_to_target' ? 'target_to_native' : 'source_to_target',
     );
+    setIsLoading(false);
+    setIsLoadingAlternative(false);
     setResult(null);
     setError(null);
     setSentenceAlternatives([]);
@@ -284,6 +312,7 @@ export default function App() {
   }
 
   function handleRestoreHistoryItem(item: TranslationHistoryItem) {
+    requestVersionRef.current += 1;
     updateSettings((current) => ({
       ...current,
       provider: item.provider,
@@ -293,6 +322,8 @@ export default function App() {
       translationContext: item.context,
     }));
     setDirectionMode(item.directionMode);
+    setIsLoading(false);
+    setIsLoadingAlternative(false);
     setSourceText(item.sourceText);
     setResult(item.result);
     setSentenceAlternatives(
