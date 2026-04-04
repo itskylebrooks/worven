@@ -1,11 +1,11 @@
-import { parseJsonObject } from '../lib/json';
-import { buildTranslationPrompts } from '../lib/prompts';
+import { parseJsonObject } from '../lib/json.js';
+import { buildTranslationPrompts } from '../lib/prompts.js';
 import type {
   ProviderId,
   SentenceTranslationPayload,
   TranslationRequest,
   WordTranslationPayload,
-} from '../types';
+} from '../types.js';
 
 type RawTranslationPayload = WordTranslationPayload | SentenceTranslationPayload;
 
@@ -445,7 +445,7 @@ async function translateWithProvider(
       payload = await callGemini(apiKey, model, request);
       break;
     default:
-      throw new Error(`Unsupported provider: ${provider satisfies never}`);
+      throw new Error(`Unsupported provider: ${String(provider)}`);
   }
 
   return ensureShape(request.mode, payload);

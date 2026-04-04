@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true
+  },
+  "include": ["api/**/*.ts", "src/server/**/*.ts", "src/lib/json.ts", "src/lib/prompts.ts", "src/types.ts"]
+}

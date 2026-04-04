@@ -1,4 +1,4 @@
-import { handleTranslateApi } from '../src/server/translate-api';
+import { handleTranslateApi } from '../src/server/translate-api.js';
 
 export default async function handler(
   req: Parameters<typeof handleTranslateApi>[0],

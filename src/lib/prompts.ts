@@ -1,4 +1,4 @@
-import type { TranslationContext, TranslationRequest } from '../types';
+import type { TranslationContext, TranslationRequest } from '../types.js';
 
 type JsonSchema = Record<string, unknown>;
 
