@@ -168,7 +168,7 @@ export default function App() {
   }
 
   const leftPanelLabel =
-    directionMode === 'source_to_target' ? 'Source' : settings.nativeLanguage;
+    directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
   const rightPanelLabel =
     directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
 
