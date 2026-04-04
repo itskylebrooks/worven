@@ -233,7 +233,7 @@ export default function App() {
             <button
               type="button"
               onClick={toggleDirectionMode}
-              className="absolute left-1/2 top-6 z-10 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-subtle bg-surface-elevated text-muted shadow-sm transition hover-nonaccent lg:inline-flex"
+              className="absolute left-1/2 top-2 z-10 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-subtle bg-surface-elevated text-muted shadow-sm transition hover-nonaccent lg:inline-flex"
               aria-label="Switch translation direction"
               title="Switch translation direction"
             >
