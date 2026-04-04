@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRightLeft } from 'lucide-react';
+import { ArrowRightLeft, Copy } from 'lucide-react';
 import { Header } from './components/Header';
 import { HistoryPanel } from './components/HistoryPanel';
 import { OutputPanel } from './components/OutputPanel';
@@ -26,6 +26,7 @@ export default function App() {
   const [directionMode, setDirectionMode] = useState<TranslationDirectionMode>('source_to_target');
   const [sourceText, setSourceText] = useState('');
   const [result, setResult] = useState<TranslationResult | null>(null);
+  const [sentenceAlternatives, setSentenceAlternatives] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAlternative, setIsLoadingAlternative] = useState(false);
@@ -77,6 +78,7 @@ export default function App() {
     setError(null);
     setIsLoading(true);
     setIsLoadingAlternative(false);
+    setSentenceAlternatives([]);
 
     const mode = classifyInput(trimmed);
 
@@ -152,9 +154,13 @@ export default function App() {
         sourceText: result.sourceText,
         data: {
           translation: payload.translation || result.data.translation,
-          alternative: payload.alternative,
+          alternative: result.data.alternative,
         },
       });
+      const nextAlternative = payload.alternative?.trim();
+      if (nextAlternative) {
+        setSentenceAlternatives((current) => [...current, nextAlternative]);
+      }
     } catch (translationError) {
       setError(
         translationError instanceof Error
@@ -170,6 +176,7 @@ export default function App() {
     setSourceText('');
     setError(null);
     setResult(null);
+    setSentenceAlternatives([]);
   }
 
   function handleTextareaKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -190,16 +197,29 @@ export default function App() {
     );
     setResult(null);
     setError(null);
+    setSentenceAlternatives([]);
   }
 
   const leftPanelLabel =
     directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
   const rightPanelLabel =
     directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
-  const sentenceAlternative =
-    result?.mode === 'sentence' ? result.data.alternative : null;
   const showSentenceAlternativePanel =
-    result?.mode === 'sentence' && (isLoadingAlternative || Boolean(sentenceAlternative));
+    result?.mode === 'sentence' && (isLoadingAlternative || sentenceAlternatives.length > 0);
+
+  async function copyText(value: string) {
+    const text = value.trim();
+    if (!text) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch {
+      return;
+    }
+  }
 
   function handleRestoreHistoryItem(item: TranslationHistoryItem) {
     setSettings((current) => ({
@@ -213,6 +233,11 @@ export default function App() {
     setDirectionMode(item.directionMode);
     setSourceText(item.sourceText);
     setResult(item.result);
+    setSentenceAlternatives(
+      item.result.mode === 'sentence' && item.result.data.alternative
+        ? [item.result.data.alternative]
+        : [],
+    );
     setError(null);
     setHistoryOpen(false);
   }
@@ -320,21 +345,56 @@ export default function App() {
               onTargetLanguageChange={(targetLanguage) =>
                 setSettings((current) => ({ ...current, targetLanguage }))
               }
+              onCopyTranslation={() => {
+                if (!result) return;
+                void copyText(
+                  result.mode === 'word' ? result.data.primary : result.data.translation,
+                );
+              }}
               onShowAlternative={() => void handleAlternative()}
             />
           </section>
 
           {showSentenceAlternativePanel ? (
-            <section className={`${panelAccent} mt-4 px-6 py-5`}>
-              <div className="word-section-label">Alternative</div>
+            <div className="mt-4 space-y-4">
+              {sentenceAlternatives.map((alternative, index) => (
+                <section key={`${alternative}-${index}`} className={`${panelAccent} px-6 py-5`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="word-section-label">Alternative</div>
+                    <button
+                      type="button"
+                      onClick={() => void copyText(alternative)}
+                      className="icon-button"
+                      aria-label={`Copy alternative ${index + 1}`}
+                      title="Copy"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
+                    {alternative}
+                  </p>
+                </section>
+              ))}
+
               {isLoadingAlternative ? (
-                <p className="mt-4 text-sm leading-6 text-muted">Loading alternative...</p>
-              ) : sentenceAlternative ? (
-                <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
-                  {sentenceAlternative}
-                </p>
+                <section className={`${panelAccent} px-6 py-5`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="word-section-label">Alternative</div>
+                    <button
+                      type="button"
+                      disabled
+                      className="icon-button opacity-50"
+                      aria-label="Copy alternative"
+                      title="Copy"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-muted">Loading alternative...</p>
+                </section>
               ) : null}
-            </section>
+            </div>
           ) : null}
 
           {result?.mode === 'word' && !isLoading && !error ? (

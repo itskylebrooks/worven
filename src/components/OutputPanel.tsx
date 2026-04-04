@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Languages, Sparkles } from 'lucide-react';
+import { Copy, Languages, Sparkles } from 'lucide-react';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import type { TranslationResult } from '../types';
 
@@ -12,6 +12,7 @@ interface OutputPanelProps {
   canChangeLanguage: boolean;
   selectedTargetLanguage: string;
   onTargetLanguageChange: (language: string) => void;
+  onCopyTranslation: () => void;
   onShowAlternative: () => void;
 }
 
@@ -30,6 +31,7 @@ export function OutputPanel({
   canChangeLanguage,
   selectedTargetLanguage,
   onTargetLanguageChange,
+  onCopyTranslation,
   onShowAlternative,
 }: OutputPanelProps) {
   return (
@@ -87,6 +89,20 @@ export function OutputPanel({
                         {result.data.primary}
                       </div>
                     </div>
+
+                    <div className="mt-auto pt-5">
+                      <div className="flex items-center justify-start gap-4">
+                        <button
+                          type="button"
+                          onClick={onCopyTranslation}
+                          className="icon-button"
+                          aria-label="Copy translation"
+                          title="Copy"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex min-h-[15rem] flex-col overflow-hidden">
@@ -97,7 +113,16 @@ export function OutputPanel({
                     </div>
 
                     <div className="mt-auto pt-5">
-                      <div className="flex items-center justify-end gap-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <button
+                          type="button"
+                          onClick={onCopyTranslation}
+                          className="icon-button"
+                          aria-label="Copy translation"
+                          title="Copy"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
                         <button
                           type="button"
                           onClick={onShowAlternative}
