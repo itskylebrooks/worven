@@ -5,10 +5,17 @@ interface HeaderProps {
   providerLabel: string;
   modelLabel: string;
   context: TranslationContext;
+  onOpenHistory: () => void;
   onOpenSettings: () => void;
 }
 
-export function Header({ providerLabel, modelLabel, context, onOpenSettings }: HeaderProps) {
+export function Header({
+  providerLabel,
+  modelLabel,
+  context,
+  onOpenHistory,
+  onOpenSettings,
+}: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-app">
       <div className="relative flex items-center justify-between py-2.5 sm:py-3">
@@ -27,10 +34,10 @@ export function Header({ providerLabel, modelLabel, context, onOpenSettings }: H
         <div className="flex items-center gap-2">
           <button
             type="button"
-            disabled
-            title="History arrives in Phase 3"
-            className="icon-button cursor-not-allowed opacity-60"
-            aria-label="History coming in Phase 3"
+            onClick={onOpenHistory}
+            className="icon-button"
+            aria-label="Open history"
+            title="History"
           >
             <History className="h-4 w-4" />
           </button>

@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import { ArrowRightLeft, Sparkles, X } from 'lucide-react';
 import { Header } from './components/Header';
+import { HistoryPanel } from './components/HistoryPanel';
 import { OutputPanel } from './components/OutputPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { WordDetailsPanel } from './components/WordDetailsPanel';
 import { classifyInput } from './lib/classifier';
+import { addHistoryItem, clearHistory, loadHistory, removeHistoryItem } from './lib/history';
 import { applyTheme, loadSettings, persistSettings, PROVIDER_LABELS } from './lib/settings';
 import { translateWithProvider } from './lib/providers';
 import type {
   AppSettings,
   SentenceTranslationPayload,
+  TranslationDirectionMode,
+  TranslationHistoryItem,
   TranslationRequest,
   TranslationResult,
 } from './types';
 
 const panelAccent = 'rounded-[1.75rem] border border-subtle bg-surface-elevated shadow-sm';
-type TranslationDirectionMode = 'source_to_target' | 'target_to_native';
 
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
@@ -25,6 +28,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAlternative, setIsLoadingAlternative] = useState(false);
+  const [historyItems, setHistoryItems] = useState<TranslationHistoryItem[]>(() => loadHistory());
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -87,11 +92,30 @@ export default function App() {
           directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
       });
 
-      setResult({
+      const nextResult = {
         mode,
         data: payload as TranslationResult['data'],
         sourceText: trimmed,
-      } as TranslationResult);
+      } as TranslationResult;
+
+      setResult(nextResult);
+      setHistoryItems(
+        addHistoryItem({
+          id:
+            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          createdAt: new Date().toISOString(),
+          sourceText: trimmed,
+          result: nextResult,
+          provider: settings.provider,
+          model: settings.model,
+          nativeLanguage: settings.nativeLanguage,
+          targetLanguage: settings.targetLanguage,
+          context: settings.translationContext,
+          directionMode,
+        }),
+      );
     } catch (translationError) {
       setResult(null);
       setError(
@@ -172,6 +196,22 @@ export default function App() {
   const rightPanelLabel =
     directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
 
+  function handleRestoreHistoryItem(item: TranslationHistoryItem) {
+    setSettings((current) => ({
+      ...current,
+      provider: item.provider,
+      model: item.model,
+      nativeLanguage: item.nativeLanguage,
+      targetLanguage: item.targetLanguage,
+      translationContext: item.context,
+    }));
+    setDirectionMode(item.directionMode);
+    setSourceText(item.sourceText);
+    setResult(item.result);
+    setError(null);
+    setHistoryOpen(false);
+  }
+
   return (
     <div className="bg-app text-strong">
       <div className="mx-auto max-w-[64rem] px-4 pb-24 sm:pb-6">
@@ -179,6 +219,7 @@ export default function App() {
           providerLabel={PROVIDER_LABELS[settings.provider]}
           modelLabel={settings.model}
           context={settings.translationContext}
+          onOpenHistory={() => setHistoryOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
@@ -266,6 +307,15 @@ export default function App() {
         settings={settings}
         onClose={() => setSettingsOpen(false)}
         onChange={setSettings}
+      />
+
+      <HistoryPanel
+        open={historyOpen}
+        items={historyItems}
+        onClose={() => setHistoryOpen(false)}
+        onRestore={handleRestoreHistoryItem}
+        onDelete={(id) => setHistoryItems(removeHistoryItem(id))}
+        onClear={() => setHistoryItems(clearHistory())}
       />
     </div>
   );

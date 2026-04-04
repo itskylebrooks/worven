@@ -1,6 +1,7 @@
 export type ProviderId = 'openai' | 'anthropic' | 'gemini';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type TranslationMode = 'word' | 'sentence';
+export type TranslationDirectionMode = 'source_to_target' | 'target_to_native';
 export type TranslationContext =
   | 'General'
   | 'Formal'
@@ -67,3 +68,16 @@ export type TranslationResult =
       data: SentenceTranslationPayload;
       sourceText: string;
     };
+
+export interface TranslationHistoryItem {
+  id: string;
+  createdAt: string;
+  sourceText: string;
+  result: TranslationResult;
+  provider: ProviderId;
+  model: string;
+  nativeLanguage: string;
+  targetLanguage: string;
+  context: TranslationContext;
+  directionMode: TranslationDirectionMode;
+}
