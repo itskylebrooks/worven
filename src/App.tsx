@@ -1,5 +1,6 @@
-import { ArrowRightLeft, Copy, Eraser, Languages, LoaderCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowRightLeft, Eraser, Languages, LoaderCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatedCopyButton } from './components/AnimatedCopyButton';
 import { Header } from './components/Header';
 import { HistoryPanel } from './components/HistoryPanel';
 import { OutputPanel } from './components/OutputPanel';
@@ -33,11 +34,22 @@ export default function App() {
   const [historyItems, setHistoryItems] = useState<TranslationHistoryItem[]>(() => loadHistory());
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     applyTheme(settings.themeMode);
     persistSettings(settings);
   }, [settings]);
+
+  useEffect(
+    () => () => {
+      if (copyTimeoutRef.current) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (settings.themeMode !== 'system' || typeof window.matchMedia !== 'function') {
@@ -205,13 +217,25 @@ export default function App() {
   const showSentenceAlternativePanel =
     result?.mode === 'sentence' && (isLoadingAlternative || sentenceAlternatives.length > 0);
 
-  async function copyText(value: string) {
+  function flashCopied(key: string) {
+    setCopiedKey(key);
+    if (copyTimeoutRef.current) {
+      window.clearTimeout(copyTimeoutRef.current);
+    }
+    copyTimeoutRef.current = window.setTimeout(() => {
+      setCopiedKey((current) => (current === key ? null : current));
+      copyTimeoutRef.current = null;
+    }, 1200);
+  }
+
+  async function copyText(value: string, key: string) {
     const text = value.trim();
     if (!text) return;
 
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
+        flashCopied(key);
         return;
       }
     } catch {
@@ -352,10 +376,12 @@ export default function App() {
               onTargetLanguageChange={(targetLanguage) =>
                 setSettings((current) => ({ ...current, targetLanguage }))
               }
+              isTranslationCopied={copiedKey === 'output-translation'}
               onCopyTranslation={() => {
                 if (!result) return;
                 void copyText(
                   result.mode === 'word' ? result.data.primary : result.data.translation,
+                  'output-translation',
                 );
               }}
               onShowAlternative={() => void handleAlternative()}
@@ -368,15 +394,12 @@ export default function App() {
                 <section key={`${alternative}-${index}`} className={`${panelAccent} px-6 py-5`}>
                   <div className="flex items-center justify-between gap-4">
                     <div className="word-section-label">Alternative</div>
-                    <button
-                      type="button"
-                      onClick={() => void copyText(alternative)}
-                      className="icon-button"
-                      aria-label={`Copy alternative ${index + 1}`}
-                      title="Copy"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
+                    <AnimatedCopyButton
+                      copied={copiedKey === `alternative-${index}`}
+                      onClick={() => void copyText(alternative, `alternative-${index}`)}
+                      ariaLabel={`Copy alternative ${index + 1}`}
+                      title={copiedKey === `alternative-${index}` ? 'Copied' : 'Copy'}
+                    />
                   </div>
                   <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
                     {alternative}
@@ -388,15 +411,14 @@ export default function App() {
                 <section className={`${panelAccent} px-6 py-5`}>
                   <div className="flex items-center justify-between gap-4">
                     <div className="word-section-label">Alternative</div>
-                    <button
-                      type="button"
+                    <AnimatedCopyButton
+                      copied={false}
+                      onClick={() => undefined}
                       disabled
                       className="icon-button opacity-50"
-                      aria-label="Copy alternative"
+                      ariaLabel="Copy alternative"
                       title="Copy"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
+                    />
                   </div>
                   <p className="mt-4 text-sm leading-6 text-muted">Loading alternative...</p>
                 </section>

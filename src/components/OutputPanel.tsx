@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Copy, Languages, LoaderCircle, RotateCcw, Sparkles } from 'lucide-react';
+import { Languages, LoaderCircle, RotateCcw, Sparkles } from 'lucide-react';
+import { AnimatedCopyButton } from './AnimatedCopyButton';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import type { TranslationResult } from '../types';
 
@@ -12,6 +13,7 @@ interface OutputPanelProps {
   canChangeLanguage: boolean;
   selectedTargetLanguage: string;
   onTargetLanguageChange: (language: string) => void;
+  isTranslationCopied: boolean;
   onCopyTranslation: () => void;
   onShowAlternative: () => void;
 }
@@ -31,6 +33,7 @@ export function OutputPanel({
   canChangeLanguage,
   selectedTargetLanguage,
   onTargetLanguageChange,
+  isTranslationCopied,
   onCopyTranslation,
   onShowAlternative,
 }: OutputPanelProps) {
@@ -119,28 +122,22 @@ export function OutputPanel({
               result.mode === 'word' ? (
                 <div className="panel-actions justify-start">
                   <div className="flex items-center justify-start gap-4">
-                    <button
-                      type="button"
+                    <AnimatedCopyButton
+                      copied={isTranslationCopied}
                       onClick={onCopyTranslation}
-                      className="icon-button"
-                      aria-label="Copy translation"
-                      title="Copy"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
+                      ariaLabel="Copy translation"
+                      title={isTranslationCopied ? 'Copied' : 'Copy'}
+                    />
                   </div>
                 </div>
               ) : (
                 <div className="panel-actions">
-                  <button
-                    type="button"
+                  <AnimatedCopyButton
+                    copied={isTranslationCopied}
                     onClick={onCopyTranslation}
-                    className="icon-button"
-                    aria-label="Copy translation"
-                    title="Copy"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
+                    ariaLabel="Copy translation"
+                    title={isTranslationCopied ? 'Copied' : 'Copy'}
+                  />
                   <button
                     type="button"
                     onClick={onShowAlternative}
