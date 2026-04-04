@@ -3,6 +3,7 @@ import { Sparkles, X } from 'lucide-react';
 import { Header } from './components/Header';
 import { OutputPanel } from './components/OutputPanel';
 import { SettingsPanel } from './components/SettingsPanel';
+import { WordDetailsPanel } from './components/WordDetailsPanel';
 import { classifyInput } from './lib/classifier';
 import { applyTheme, loadSettings, persistSettings, PROVIDER_LABELS } from './lib/settings';
 import { translateWithProvider } from './lib/providers';
@@ -171,7 +172,7 @@ export default function App() {
                 </h1>
               </div>
 
-              <div className="relative min-h-[29rem] px-6 py-5">
+              <div className="relative min-h-[20rem] px-6 py-5">
                 <textarea
                   id="source-text"
                   className="translator-textarea translator-textarea-size-default"
@@ -222,6 +223,10 @@ export default function App() {
               onShowAlternative={() => void handleAlternative()}
             />
           </section>
+
+          {result?.mode === 'word' && !isLoading && !error ? (
+            <WordDetailsPanel data={result.data} />
+          ) : null}
         </main>
       </div>
 

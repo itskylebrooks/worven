@@ -10,6 +10,11 @@ export type TranslationContext =
   | 'Casual'
   | 'Literary';
 
+export interface WordUsageExample {
+  source: string;
+  target: string;
+}
+
 export interface WordTranslationPayload {
   primary: string;
   alternatives: string[];
@@ -17,7 +22,7 @@ export interface WordTranslationPayload {
     notes: string;
   };
   pronunciation: string;
-  examples: string[];
+  examples: WordUsageExample[];
 }
 
 export interface SentenceTranslationPayload {

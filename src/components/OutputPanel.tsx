@@ -50,9 +50,9 @@ export function OutputPanel({
         </div>
       </div>
 
-      <div className="min-h-[29rem] px-6 py-5">
+      <div className="min-h-[20rem] px-6 py-5">
         {isLoading ? (
-          <div className="grid min-h-[24rem] place-items-center">
+          <div className="grid min-h-[15rem] place-items-center">
             <div className="space-y-4 text-center">
               <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-subtle text-accent">
                 <Sparkles className="h-6 w-6 animate-pulse" />
@@ -70,37 +70,16 @@ export function OutputPanel({
               <motion.div
                 key={`${result.mode}:${result.sourceText}`}
                 {...cardMotion}
-                className="flex min-h-[24rem] flex-col"
+                className="flex min-h-[15rem] flex-col"
               >
                 {result.mode === 'word' ? (
-                  <div className="flex min-h-[24rem] flex-col">
+                  <div className="flex min-h-[15rem] flex-col">
                     <div className="text-2xl font-medium leading-tight text-strong sm:text-3xl">
                       {result.data.primary}
                     </div>
-
-                    <div className="mt-8 flex flex-wrap gap-2">
-                      {result.data.alternatives.map((item) => (
-                        <span key={item} className="chip">
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="mt-8 space-y-6">
-                      <p className="text-sm leading-6 text-muted">{result.data.grammar.notes}</p>
-                      <p className="text-lg leading-7 text-strong">{result.data.pronunciation}</p>
-                    </div>
-
-                    <ul className="mt-auto space-y-3 pt-8">
-                      {result.data.examples.map((example, index) => (
-                        <li key={`${example}-${index}`} className="text-sm leading-6 text-muted">
-                          {example}
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 ) : (
-                  <div className="flex min-h-[24rem] flex-col">
+                  <div className="flex min-h-[15rem] flex-col">
                     <div className="text-2xl font-medium leading-tight text-strong sm:text-3xl">
                       {result.data.translation}
                     </div>
@@ -130,7 +109,7 @@ export function OutputPanel({
             ) : (
               <motion.div
                 {...cardMotion}
-                className="grid min-h-[24rem] place-items-center text-center"
+                className="grid min-h-[15rem] place-items-center text-center"
               >
                 <div className="max-w-sm space-y-4">
                   <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">

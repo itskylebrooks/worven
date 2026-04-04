@@ -316,10 +316,17 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
               <div className="col-span-2 grid grid-cols-4 gap-2">
                 <div className="col-span-3 col-start-2">
                   <input
-                    id="api-key"
+                    id={`${settings.provider}-api-key`}
+                    name={`${settings.provider}-api-key`}
                     type="password"
                     className="h-10 w-full rounded-lg border border-subtle bg-transparent px-3 text-sm text-strong outline-none transition"
-                    autoComplete="off"
+                    autoComplete="new-password"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    data-1p-ignore="true"
+                    data-bwignore="true"
+                    data-form-type="other"
+                    data-lpignore="true"
                     spellCheck={false}
                     value={settings.apiKeys[settings.provider]}
                     onChange={(event) => handleApiKeyChange(settings.provider, event.target.value)}

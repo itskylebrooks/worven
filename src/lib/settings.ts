@@ -5,7 +5,7 @@ export const STORAGE_KEY = 'worven-settings';
 
 export const PROVIDER_MODELS: Record<ProviderId, string[]> = {
   openai: ['gpt-5.4-mini', 'gpt-5.4-nano'],
-  anthropic: ['claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'],
+  anthropic: ['claude-sonnet-4-6', 'claude-haiku-4-5'],
   gemini: ['gemini-2.5-flash', 'gemini-2.5-pro'],
 };
 
@@ -28,6 +28,41 @@ export const DEFAULT_SETTINGS: AppSettings = {
   translationContext: 'General',
   themeMode: 'system',
 };
+
+function recoverApiKeyValue(value: unknown, provider: ProviderId): string {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  if (!trimmed.startsWith('{')) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as Partial<AppSettings> & {
+      apiKeys?: Partial<Record<ProviderId, string>>;
+    };
+    const nestedKey = parsed.apiKeys?.[provider];
+    return typeof nestedKey === 'string' ? nestedKey.trim() : trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+function normalizeApiKeys(
+  apiKeys: Partial<Record<ProviderId, unknown>> | undefined,
+): Record<ProviderId, string> {
+  return {
+    openai: recoverApiKeyValue(apiKeys?.openai, 'openai'),
+    anthropic: recoverApiKeyValue(apiKeys?.anthropic, 'anthropic'),
+    gemini: recoverApiKeyValue(apiKeys?.gemini, 'gemini'),
+  };
+}
 
 export function getResolvedTheme(mode: ThemeMode): 'light' | 'dark' {
   if (mode === 'light' || mode === 'dark') {
@@ -72,10 +107,7 @@ export function loadSettings(): AppSettings {
       ...parsed,
       provider,
       model,
-      apiKeys: {
-        ...DEFAULT_SETTINGS.apiKeys,
-        ...(parsed.apiKeys ?? {}),
-      },
+      apiKeys: normalizeApiKeys(parsed.apiKeys),
     };
   } catch {
     return DEFAULT_SETTINGS;

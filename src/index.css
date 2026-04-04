@@ -274,7 +274,7 @@ select,
   }
 
   .translator-textarea {
-    @apply mb-16 min-h-[24rem] w-full resize-none border-0 bg-transparent p-0 pb-4 pr-4 leading-tight text-strong outline-none;
+    @apply mb-16 min-h-[15rem] w-full resize-none border-0 bg-transparent p-0 pb-4 pr-4 leading-tight text-strong outline-none;
   }
 
   .translator-textarea::placeholder {
@@ -309,6 +309,28 @@ select,
   .chip {
     @apply inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium tracking-[0.08em] text-strong;
     background-color: var(--color-chip-bg);
+  }
+
+  .word-section-label {
+    @apply text-xs font-medium uppercase tracking-[0.18em] text-soft;
+  }
+
+  .word-alt-chip {
+    @apply inline-flex min-h-10 items-center rounded-2xl border border-subtle px-3.5 py-2 text-sm text-strong;
+    background-color: var(--color-surface-alt);
+  }
+
+  .word-example-card {
+    @apply rounded-2xl border border-subtle p-4;
+    background-color: var(--color-surface-alt);
+  }
+
+  .word-example-source {
+    @apply text-sm leading-6 text-strong;
+  }
+
+  .word-example-target {
+    @apply mt-1 text-sm leading-6 text-muted;
   }
 
   .translate-pill {
