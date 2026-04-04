@@ -274,7 +274,7 @@ select,
   }
 
   .translator-textarea {
-    @apply min-h-[24rem] w-full resize-none border-0 bg-transparent p-0 pr-14 leading-tight text-strong outline-none;
+    @apply mb-16 min-h-[24rem] w-full resize-none border-0 bg-transparent p-0 pb-4 pr-4 leading-tight text-strong outline-none;
   }
 
   .translator-textarea::placeholder {
@@ -312,7 +312,7 @@ select,
   }
 
   .translate-pill {
-    @apply inline-flex h-12 items-center justify-center gap-2 rounded-full border border-transparent px-5 text-sm font-medium text-inverse transition;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-full border border-transparent px-5 text-sm font-medium text-inverse transition;
     background-color: var(--color-accent);
   }
 
@@ -324,8 +324,16 @@ select,
     @apply cursor-not-allowed opacity-60;
   }
 
+  .target-language-select-shell {
+    @apply relative inline-grid place-items-center;
+  }
+
+  .target-language-select-label {
+    @apply min-w-[12rem] px-0 text-center text-base font-semibold uppercase tracking-[0.08em] text-strong;
+  }
+
   .target-language-select {
-    @apply min-w-[12rem] border-0 bg-transparent px-0 text-center text-base font-semibold uppercase tracking-[0.08em] text-strong outline-none;
+    @apply absolute inset-0 min-w-[12rem] cursor-pointer border-0 bg-transparent px-0 text-center text-base font-semibold text-strong opacity-0 outline-none;
     appearance: none;
     background-image: none;
     text-align-last: center;

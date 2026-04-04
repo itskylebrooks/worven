@@ -31,7 +31,10 @@ export function OutputPanel({
   return (
     <section className="panel-shell overflow-hidden">
       <div className="border-b border-subtle px-6 py-5 text-center">
-        <div className="inline-flex items-center">
+        <div className="target-language-select-shell">
+          <span className="target-language-select-label" aria-hidden="true">
+            {targetLanguage}
+          </span>
           <select
             value={targetLanguage}
             onChange={(event) => onTargetLanguageChange(event.target.value)}

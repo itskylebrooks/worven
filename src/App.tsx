@@ -157,8 +157,8 @@ export default function App() {
       <div className="mx-auto max-w-[64rem] px-4 pb-24 sm:pb-6">
         <Header
           providerLabel={PROVIDER_LABELS[settings.provider]}
+          modelLabel={settings.model}
           context={settings.translationContext}
-          targetLanguage={settings.targetLanguage}
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
@@ -188,7 +188,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={clearInput}
-                        className="secondary-button h-12 rounded-full px-4"
+                        className="secondary-button h-10 rounded-full px-4"
                         aria-label="Clear text"
                       >
                         <X className="h-4 w-4" />

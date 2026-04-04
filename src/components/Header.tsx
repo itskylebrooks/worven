@@ -3,12 +3,12 @@ import type { TranslationContext } from '../types';
 
 interface HeaderProps {
   providerLabel: string;
+  modelLabel: string;
   context: TranslationContext;
-  targetLanguage: string;
   onOpenSettings: () => void;
 }
 
-export function Header({ providerLabel, context, targetLanguage, onOpenSettings }: HeaderProps) {
+export function Header({ providerLabel, modelLabel, context, onOpenSettings }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-app">
       <div className="relative flex items-center justify-between py-2.5 sm:py-3">
@@ -21,7 +21,7 @@ export function Header({ providerLabel, context, targetLanguage, onOpenSettings 
         </div>
 
         <div className="absolute left-1/2 hidden -translate-x-1/2 text-sm text-muted md:inline-flex md:items-center">
-          {providerLabel} · {targetLanguage} · {context}
+          {providerLabel} · {modelLabel} · {context}
         </div>
 
         <div className="flex items-center gap-2">
