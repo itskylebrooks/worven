@@ -69,8 +69,10 @@ export function OutputPanel({
             </div>
           </div>
         ) : error ? (
-          <div className="panel-content">
-            <div className="panel-shell p-4 text-sm text-strong">{error}</div>
+          <div className="panel-content grid place-items-center">
+            <div className="max-w-sm text-center">
+              <p className="whitespace-pre-wrap text-base font-medium text-strong">{error}</p>
+            </div>
           </div>
         ) : !result ? (
           <div className="panel-content">
