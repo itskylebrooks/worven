@@ -19,7 +19,7 @@ const CONTEXT_INSTRUCTIONS: Record<TranslationContext, string> = {
     'Favor expressive, stylistically rich wording while preserving the original meaning, imagery, and emotional tone.',
 };
 
-function buildWordSchema(): JsonSchema {
+function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSchema {
   return {
     type: 'object',
     properties: {
@@ -29,21 +29,20 @@ function buildWordSchema(): JsonSchema {
       },
       alternatives: {
         type: 'array',
-        description: 'Two or three distinct alternative translations.',
+        description: `Two or three related or alternative terms in ${focusLanguage}, each with a short gloss in ${glossLanguage}.`,
         items: {
           type: 'object',
           properties: {
-            target: {
+            term: {
               type: 'string',
-              description: 'Alternative translation in the target language.',
+              description: `Related or alternative term in ${focusLanguage}.`,
             },
-            source: {
+            gloss: {
               type: 'string',
-              description:
-                'Short source-language gloss or equivalent meaning for that target-language alternative.',
+              description: `Short gloss or equivalent meaning in ${glossLanguage}.`,
             },
           },
-          required: ['target', 'source'],
+          required: ['term', 'gloss'],
           additionalProperties: false,
         },
       },
@@ -53,7 +52,7 @@ function buildWordSchema(): JsonSchema {
           notes: {
             type: 'string',
             description:
-              'Brief linguistic notes for the target language, such as part of speech, gender, inflection, or register when relevant.',
+              `Brief linguistic notes for the focus lexical item in ${focusLanguage}, such as part of speech, gender, inflection, or register when relevant.`,
           },
         },
         required: ['notes'],
@@ -62,7 +61,7 @@ function buildWordSchema(): JsonSchema {
       pronunciation: {
         type: 'string',
         description:
-          'Pronunciation guidance for the primary translation, written for a speaker of the user native language.',
+          'Pronunciation guidance for the focus lexical item, written for a speaker of the user native language.',
       },
       examples: {
         type: 'array',
@@ -72,11 +71,11 @@ function buildWordSchema(): JsonSchema {
           properties: {
             source: {
               type: 'string',
-              description: 'A concise natural example in the detected source language.',
+              description: 'A concise natural example on the source side of the lookup.',
             },
             target: {
               type: 'string',
-              description: 'The translated version of that example in the target language.',
+              description: 'The corresponding translation on the target side of the lookup.',
             },
           },
           required: ['source', 'target'],
@@ -127,16 +126,19 @@ export function buildTranslationPrompts(request: TranslationRequest) {
   ];
 
   if (request.mode === 'word') {
+    const glossLanguage = request.nativeLanguage;
     return {
-      outputSchema: buildWordSchema(),
+      outputSchema: buildWordSchema(focusLanguage, glossLanguage),
       systemPrompt: [
         ...baseRules,
         'Treat the source as a standalone lexical item or very short phrase, not as a full sentence.',
         'Prefer dictionary-quality translations that a learner could reuse confidently.',
         `Explain and contextualize the focus lexical item in ${focusLanguage}.`,
         'Return alternatives that are genuinely different common renderings, not tiny rewrites of the same phrase.',
+        'For languages where dictionary forms commonly include articles or determiners for nouns, include them whenever relevant. For example, German nouns should include "der", "die", or "das".',
         `Write grammar.notes in ${request.nativeLanguage}, explain meaning and usage clearly, and use double quotes instead of single quotes.`,
-        `Pronunciation must refer to the focus lexical item and be written in the user native language/script: ${request.nativeLanguage}.`,
+        `Pronunciation must refer to the focus lexical item, which should be the foreign-language term being learned, and be written in the user native language/script: ${request.nativeLanguage}.`,
+        `For related words, always return the foreign-language term being learned in ${focusLanguage}, with only a short gloss in ${glossLanguage}.`,
       ].join(' '),
       userPrompt: `
 Translate this input in word mode.
@@ -163,10 +165,13 @@ Return exactly this JSON shape:
 
 Requirements:
 - "primary" should be the best main translation in the requested target language.
+- If the focus lexical item is a noun in a language like German, include its dictionary article in "primary" and in related-word "term" values when relevant.
 - If detailFocus is "target", explain the translated target-language word or phrase.
 - If detailFocus is "source", explain the source-language word or phrase the user entered.
+- "pronunciation" must always be for the focus lexical item in the foreign language, not for the user's native-language translation.
 - Provide exactly 3 alternatives.
-- For each alternative, provide the focus-language term plus a short gloss in ${request.nativeLanguage}.
+- For each alternative, "term" must be the related word in ${focusLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
+- If detailFocus is "source", do not return native-language related words as terms. Keep the terms in ${focusLanguage}.
 - Provide exactly 3 concise source/target example pairs.
 - Keep examples natural, useful, and short.
 `.trim(),

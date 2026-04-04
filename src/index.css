@@ -339,19 +339,6 @@ select,
     @apply mt-1 text-sm leading-6 text-muted;
   }
 
-  .word-pronunciation {
-    @apply allow-select text-sm italic leading-6 text-strong;
-    font-family:
-      ui-monospace,
-      SFMono-Regular,
-      Menlo,
-      Monaco,
-      Consolas,
-      'Liberation Mono',
-      'Courier New',
-      monospace;
-  }
-
   .translate-pill {
     @apply inline-flex h-10 items-center justify-center gap-2 rounded-full border border-transparent px-5 text-sm font-medium text-inverse transition;
     background-color: var(--color-accent);
