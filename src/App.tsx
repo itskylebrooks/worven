@@ -167,10 +167,10 @@ export default function App() {
     setError(null);
   }
 
-  const sourceLanguageLabel =
-    directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage;
-  const outputLanguageLabel =
-    directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage;
+  const leftPanelLabel =
+    directionMode === 'source_to_target' ? 'Source' : settings.nativeLanguage;
+  const rightPanelLabel =
+    directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
 
   return (
     <div className="bg-app text-strong">
@@ -187,7 +187,7 @@ export default function App() {
             <section className={`${panelAccent} overflow-hidden`}>
               <div className="border-b border-subtle px-6 py-5 text-center">
                 <h1 className="text-base font-semibold uppercase tracking-[0.08em] text-strong">
-                  {sourceLanguageLabel}
+                  {leftPanelLabel}
                 </h1>
               </div>
 
@@ -245,7 +245,7 @@ export default function App() {
               isLoading={isLoading}
               isLoadingAlternative={isLoadingAlternative}
               error={error}
-              displayLanguageLabel={outputLanguageLabel}
+              displayLanguageLabel={rightPanelLabel}
               canChangeLanguage={directionMode === 'source_to_target'}
               selectedTargetLanguage={settings.targetLanguage}
               onTargetLanguageChange={(targetLanguage) =>
