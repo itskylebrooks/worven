@@ -30,7 +30,7 @@ export function WordDetailsPanel({ data }: WordDetailsPanelProps) {
 
         <section className="panel-shell px-6 py-5">
           <div className="word-section-label">Pronunciation</div>
-          <p className="mt-3 text-sm leading-6 text-strong">
+          <p className="mt-3 text-base leading-7 text-strong">
             <span>{quotedPronunciation}</span>
             {pronunciationExplanation ? (
               <span className="text-muted">
@@ -60,7 +60,7 @@ export function WordDetailsPanel({ data }: WordDetailsPanelProps) {
 
         <section className="panel-shell px-6 py-5">
           <div className="word-section-label">Notes</div>
-          <p className="mt-3 text-sm leading-6 text-muted">{data.grammar.notes}</p>
+          <p className="mt-3 text-base leading-7 text-muted">{data.grammar.notes}</p>
         </section>
       </div>
     </section>

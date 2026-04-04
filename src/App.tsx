@@ -506,7 +506,7 @@ export default function App() {
                       title={copiedKey === `alternative-${index}` ? 'Copied' : 'Copy'}
                     />
                   </div>
-                  <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
+                  <p className="mt-4 whitespace-pre-wrap text-base leading-7 text-muted">
                     {alternative}
                   </p>
                 </section>

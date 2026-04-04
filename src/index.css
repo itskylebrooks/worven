@@ -313,23 +313,23 @@ select,
   }
 
   .word-section-label {
-    @apply text-base font-semibold tracking-[0.01em] text-strong;
+    @apply text-lg font-semibold tracking-[0.01em] text-strong;
   }
 
   .word-alt-target {
-    @apply text-sm font-medium leading-6 text-strong;
+    @apply text-base font-medium leading-7 text-strong;
   }
 
   .word-alt-source {
-    @apply mt-1 text-sm leading-6 text-muted;
+    @apply mt-1 text-base leading-7 text-muted;
   }
 
   .word-example-source {
-    @apply text-sm leading-6 text-strong;
+    @apply text-base leading-7 text-strong;
   }
 
   .word-example-target {
-    @apply mt-1 text-sm leading-6 text-muted;
+    @apply mt-1 text-base leading-7 text-muted;
   }
 
   .target-language-select-shell {
