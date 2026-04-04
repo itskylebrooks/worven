@@ -10,7 +10,13 @@ import { SUPPORTED_LANGUAGES } from './constants/languages';
 import { classifyInput } from './lib/classifier';
 import { addHistoryItem, clearHistory, loadHistory, removeHistoryItem } from './lib/history';
 import { translateWithProvider } from './lib/providers';
-import { applyTheme, loadSettings, persistSettings, PROVIDER_LABELS } from './lib/settings';
+import {
+  applyTheme,
+  loadSettings,
+  loadSettingsSnapshot,
+  persistSettings,
+  PROVIDER_LABELS,
+} from './lib/settings';
 import type {
   AppSettings,
   SentenceTranslationPayload,
@@ -23,7 +29,8 @@ import type {
 const panelAccent = 'panel-shell';
 
 export default function App() {
-  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettingsSnapshot());
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
   const [directionMode, setDirectionMode] = useState<TranslationDirectionMode>('source_to_target');
   const [sourceText, setSourceText] = useState('');
   const [result, setResult] = useState<TranslationResult | null>(null);
@@ -36,11 +43,44 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyTimeoutRef = useRef<number | null>(null);
+  const hasLocalSettingsChanges = useRef(false);
+
+  function updateSettings(next: React.SetStateAction<AppSettings>) {
+    hasLocalSettingsChanges.current = true;
+    setSettings(next);
+  }
 
   useEffect(() => {
     applyTheme(settings.themeMode);
-    persistSettings(settings);
-  }, [settings]);
+  }, [settings.themeMode]);
+
+  useEffect(() => {
+    let active = true;
+
+    void loadSettings().then((loadedSettings) => {
+      if (!active) {
+        return;
+      }
+
+      if (!hasLocalSettingsChanges.current) {
+        setSettings(loadedSettings);
+      }
+
+      setSettingsHydrated(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!settingsHydrated) {
+      return;
+    }
+
+    void persistSettings(settings);
+  }, [settings, settingsHydrated]);
 
   useEffect(
     () => () => {
@@ -244,7 +284,7 @@ export default function App() {
   }
 
   function handleRestoreHistoryItem(item: TranslationHistoryItem) {
-    setSettings((current) => ({
+    updateSettings((current) => ({
       ...current,
       provider: item.provider,
       model: item.model,
@@ -287,7 +327,7 @@ export default function App() {
                     <select
                       value={settings.targetLanguage}
                       onChange={(event) =>
-                        setSettings((current) => ({
+                        updateSettings((current) => ({
                           ...current,
                           targetLanguage: event.target.value,
                         }))
@@ -374,7 +414,7 @@ export default function App() {
               canChangeLanguage={directionMode === 'source_to_target'}
               selectedTargetLanguage={settings.targetLanguage}
               onTargetLanguageChange={(targetLanguage) =>
-                setSettings((current) => ({ ...current, targetLanguage }))
+                updateSettings((current) => ({ ...current, targetLanguage }))
               }
               isTranslationCopied={copiedKey === 'output-translation'}
               onCopyTranslation={() => {
@@ -436,7 +476,7 @@ export default function App() {
         open={settingsOpen}
         settings={settings}
         onClose={() => setSettingsOpen(false)}
-        onChange={setSettings}
+        onChange={updateSettings}
       />
 
       <HistoryPanel

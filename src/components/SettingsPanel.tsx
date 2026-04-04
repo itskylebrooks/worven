@@ -332,6 +332,9 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
                     onChange={(event) => handleApiKeyChange(settings.provider, event.target.value)}
                     placeholder={`Paste ${PROVIDER_LABELS[settings.provider]} key`}
                   />
+                  <p className="mt-2 text-[11px] text-muted">
+                    Saved encrypted on this device.
+                  </p>
                 </div>
               </div>
             </div>

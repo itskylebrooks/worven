@@ -1,4 +1,6 @@
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
+import { decryptValue, encryptValue, isEncryptedValue } from './secure-storage';
+import type { EncryptedValue } from './secure-storage';
 import type { AppSettings, ProviderId, ThemeMode } from '../types';
 
 export const STORAGE_KEY = 'worven-settings';
@@ -29,7 +31,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   themeMode: 'system',
 };
 
-function recoverApiKeyValue(value: unknown, provider: ProviderId): string {
+type PersistedApiKey = string | EncryptedValue;
+
+interface PersistedSettings extends Omit<AppSettings, 'apiKeys'> {
+  apiKeys?: Partial<Record<ProviderId, PersistedApiKey | unknown>>;
+}
+
+function recoverLegacyApiKeyValue(value: unknown, provider: ProviderId): string {
   if (typeof value !== 'string') {
     return '';
   }
@@ -54,13 +62,55 @@ function recoverApiKeyValue(value: unknown, provider: ProviderId): string {
   }
 }
 
-function normalizeApiKeys(
+function normalizePlaintextApiKeys(
   apiKeys: Partial<Record<ProviderId, unknown>> | undefined,
 ): Record<ProviderId, string> {
   return {
-    openai: recoverApiKeyValue(apiKeys?.openai, 'openai'),
-    anthropic: recoverApiKeyValue(apiKeys?.anthropic, 'anthropic'),
-    gemini: recoverApiKeyValue(apiKeys?.gemini, 'gemini'),
+    openai: isEncryptedValue(apiKeys?.openai)
+      ? ''
+      : recoverLegacyApiKeyValue(apiKeys?.openai, 'openai'),
+    anthropic: isEncryptedValue(apiKeys?.anthropic)
+      ? ''
+      : recoverLegacyApiKeyValue(apiKeys?.anthropic, 'anthropic'),
+    gemini: isEncryptedValue(apiKeys?.gemini)
+      ? ''
+      : recoverLegacyApiKeyValue(apiKeys?.gemini, 'gemini'),
+  };
+}
+
+function readPersistedSettings(): PersistedSettings | null {
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  return JSON.parse(raw) as PersistedSettings;
+}
+
+function isProviderId(value: unknown): value is ProviderId {
+  return value === 'openai' || value === 'anthropic' || value === 'gemini';
+}
+
+function getProviderSettings(
+  parsed: PersistedSettings | null,
+): Pick<AppSettings, 'provider' | 'model'> {
+  const provider = isProviderId(parsed?.provider) ? parsed.provider : DEFAULT_SETTINGS.provider;
+  const availableModels = PROVIDER_MODELS[provider];
+  const model =
+    parsed?.model && availableModels.includes(parsed.model) ? parsed.model : availableModels[0];
+
+  return { provider, model };
+}
+
+function normalizeStoredSettings(parsed: PersistedSettings | null): AppSettings {
+  const { provider, model } = getProviderSettings(parsed);
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...parsed,
+    provider,
+    model,
+    apiKeys: normalizePlaintextApiKeys(parsed?.apiKeys),
   };
 }
 
@@ -85,39 +135,92 @@ export function applyTheme(mode: ThemeMode) {
   document.documentElement.classList.toggle('dark', resolved === 'dark');
 }
 
-export function loadSettings(): AppSettings {
+export function loadSettingsSnapshot(): AppSettings {
   if (typeof window === 'undefined') {
     return DEFAULT_SETTINGS;
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_SETTINGS;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    const provider = parsed.provider ?? DEFAULT_SETTINGS.provider;
-    const availableModels = PROVIDER_MODELS[provider];
-    const model =
-      parsed.model && availableModels.includes(parsed.model) ? parsed.model : availableModels[0];
-
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      provider,
-      model,
-      apiKeys: normalizeApiKeys(parsed.apiKeys),
-    };
+    return normalizeStoredSettings(readPersistedSettings());
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
-export function persistSettings(settings: AppSettings) {
+export async function loadSettings(): Promise<AppSettings> {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SETTINGS;
+  }
+
+  try {
+    const parsed = readPersistedSettings();
+    const baseSettings = normalizeStoredSettings(parsed);
+    const apiKeys = parsed?.apiKeys;
+    const openaiKey = apiKeys?.openai;
+    const anthropicKey = apiKeys?.anthropic;
+    const geminiKey = apiKeys?.gemini;
+
+    return {
+      ...baseSettings,
+      apiKeys: {
+        openai: isEncryptedValue(openaiKey)
+          ? await decryptValue(openaiKey)
+          : recoverLegacyApiKeyValue(openaiKey, 'openai'),
+        anthropic: isEncryptedValue(anthropicKey)
+          ? await decryptValue(anthropicKey)
+          : recoverLegacyApiKeyValue(anthropicKey, 'anthropic'),
+        gemini: isEncryptedValue(geminiKey)
+          ? await decryptValue(geminiKey)
+          : recoverLegacyApiKeyValue(geminiKey, 'gemini'),
+      },
+    };
+  } catch {
+    return loadSettingsSnapshot();
+  }
+}
+
+let persistSequence = 0;
+
+export async function persistSettings(settings: AppSettings) {
   if (typeof window === 'undefined') {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  const currentSequence = ++persistSequence;
+
+  try {
+    const encryptedApiKeys = {
+      openai: settings.apiKeys.openai.trim() ? await encryptValue(settings.apiKeys.openai) : '',
+      anthropic: settings.apiKeys.anthropic.trim()
+        ? await encryptValue(settings.apiKeys.anthropic)
+        : '',
+      gemini: settings.apiKeys.gemini.trim() ? await encryptValue(settings.apiKeys.gemini) : '',
+    };
+
+    if (currentSequence !== persistSequence) {
+      return;
+    }
+
+    const persistedSettings: PersistedSettings = {
+      ...settings,
+      apiKeys: encryptedApiKeys,
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedSettings));
+  } catch {
+    if (currentSequence !== persistSequence) {
+      return;
+    }
+
+    const persistedSettings: PersistedSettings = {
+      ...settings,
+      apiKeys: {
+        openai: '',
+        anthropic: '',
+        gemini: '',
+      },
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedSettings));
+  }
 }
