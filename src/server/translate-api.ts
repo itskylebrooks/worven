@@ -56,7 +56,7 @@ function readRequestBody(req: {
     return Promise.resolve('');
   }
 
-  const on = req.on;
+  const on = req.on.bind(req);
 
   return new Promise((resolve, reject) => {
     let data = '';
