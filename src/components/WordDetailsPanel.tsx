@@ -6,37 +6,39 @@ interface WordDetailsPanelProps {
 
 export function WordDetailsPanel({ data }: WordDetailsPanelProps) {
   return (
-    <section className="panel-shell mt-4 overflow-hidden">
-      <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="border-b border-subtle px-6 py-5 lg:border-b-0 lg:border-r">
-          <div className="word-section-label">Related words</div>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            {data.alternatives.map((item) => (
-              <span key={item} className="word-alt-chip">
-                {item}
-              </span>
-            ))}
-          </div>
+    <section className="mt-4 grid gap-4 lg:grid-cols-2">
+      <section className="panel-shell px-6 py-5">
+        <div className="word-section-label">Usage examples</div>
+        <div className="mt-4 divide-y divide-subtle">
+          {data.examples.map((example, index) => (
+            <article
+              key={`${example.source}-${index}`}
+              className={index === 0 ? 'pb-4' : 'py-4 last:pb-0'}
+            >
+              <p className="word-example-source">{example.source}</p>
+              <p className="word-example-target">{example.target}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
-          <div className="mt-8 border-t border-subtle pt-5">
-            <div className="word-section-label">Notes</div>
-            <p className="mt-3 text-sm leading-6 text-muted">{data.grammar.notes}</p>
-            <p className="mt-3 text-sm leading-6 text-strong">{data.pronunciation}</p>
-          </div>
+      <section className="panel-shell px-6 py-5">
+        <div className="word-section-label">Related words</div>
+        <div className="mt-4 space-y-3">
+          {data.alternatives.map((item) => (
+            <div key={`${item.target}-${item.source}`} className="word-alt-row">
+              <div className="word-alt-target">{item.target}</div>
+              <div className="word-alt-source">{item.source}</div>
+            </div>
+          ))}
         </div>
 
-        <div className="px-6 py-5">
-          <div className="word-section-label">Usage examples</div>
-          <div className="mt-4 space-y-3">
-            {data.examples.map((example, index) => (
-              <article key={`${example.source}-${index}`} className="word-example-card">
-                <p className="word-example-source">{example.source}</p>
-                <p className="word-example-target">{example.target}</p>
-              </article>
-            ))}
-          </div>
+        <div className="mt-8 border-t border-subtle pt-5">
+          <div className="word-section-label">Notes</div>
+          <p className="mt-3 text-sm leading-6 text-muted">{data.grammar.notes}</p>
+          <div className="word-pronunciation mt-4">{data.pronunciation}</div>
         </div>
-      </div>
+      </section>
     </section>
   );
 }

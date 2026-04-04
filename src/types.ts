@@ -15,9 +15,14 @@ export interface WordUsageExample {
   target: string;
 }
 
+export interface WordAlternative {
+  target: string;
+  source: string;
+}
+
 export interface WordTranslationPayload {
   primary: string;
-  alternatives: string[];
+  alternatives: WordAlternative[];
   grammar: {
     notes: string;
   };

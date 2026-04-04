@@ -31,7 +31,20 @@ function buildWordSchema(): JsonSchema {
         type: 'array',
         description: 'Two or three distinct alternative translations.',
         items: {
-          type: 'string',
+          type: 'object',
+          properties: {
+            target: {
+              type: 'string',
+              description: 'Alternative translation in the target language.',
+            },
+            source: {
+              type: 'string',
+              description:
+                'Short source-language gloss or equivalent meaning for that target-language alternative.',
+            },
+          },
+          required: ['target', 'source'],
+          additionalProperties: false,
         },
       },
       grammar: {
@@ -130,7 +143,10 @@ User native language for pronunciation: ${request.nativeLanguage}
 Return exactly this JSON shape:
 {
   "primary": "string",
-  "alternatives": ["string", "string"],
+  "alternatives": [
+    { "target": "string", "source": "string" },
+    { "target": "string", "source": "string" }
+  ],
   "grammar": { "notes": "string" },
   "pronunciation": "string",
   "examples": [
@@ -141,6 +157,7 @@ Return exactly this JSON shape:
 
 Requirements:
 - Provide 2 or 3 alternatives.
+- For each alternative, provide the target-language word plus a short source-language gloss.
 - Provide 2 or 3 concise source/target example pairs.
 - Keep examples natural, useful, and short.
 `.trim(),

@@ -64,6 +64,16 @@ function ensureShape(
       throw new Error('The provider response did not match the expected word JSON shape.');
     }
 
+    const alternatives = wordPayload.alternatives
+      .filter(
+        (item): item is WordTranslationPayload['alternatives'][number] =>
+          typeof item === 'object' &&
+          item !== null &&
+          typeof item.target === 'string' &&
+          typeof item.source === 'string',
+      )
+      .slice(0, 3);
+
     const examples = wordPayload.examples
       .filter(
         (example): example is WordTranslationPayload['examples'][number] =>
@@ -76,8 +86,8 @@ function ensureShape(
 
     return {
       primary: wordPayload.primary,
-      alternatives: wordPayload.alternatives.filter(Boolean).slice(0, 3),
-      grammar: { notes: wordPayload.grammar.notes },
+      alternatives,
+      grammar: { notes: normalizeNoteQuotes(wordPayload.grammar.notes) },
       pronunciation: wordPayload.pronunciation,
       examples,
     };
@@ -92,6 +102,13 @@ function ensureShape(
   }
 
   return sentencePayload;
+}
+
+function normalizeNoteQuotes(notes: string) {
+  return notes
+    .replace(/[“”]/g, '"')
+    .replace(/‘([^’]+)’/g, '"$1"')
+    .replace(/'([^']+)'/g, '"$1"');
 }
 
 function extractOpenAIText(data: unknown): string {

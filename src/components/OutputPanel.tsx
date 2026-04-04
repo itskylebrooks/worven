@@ -74,13 +74,13 @@ export function OutputPanel({
               >
                 {result.mode === 'word' ? (
                   <div className="flex min-h-[15rem] flex-col">
-                    <div className="text-2xl font-medium leading-tight text-strong sm:text-3xl">
+                    <div className="translation-main-text font-medium leading-tight text-strong">
                       {result.data.primary}
                     </div>
                   </div>
                 ) : (
                   <div className="flex min-h-[15rem] flex-col">
-                    <div className="text-2xl font-medium leading-tight text-strong sm:text-3xl">
+                    <div className="translation-main-text font-medium leading-tight text-strong">
                       {result.data.translation}
                     </div>
 
