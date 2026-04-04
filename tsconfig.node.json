@@ -8,5 +8,5 @@
     "allowSyntheticDefaultImports": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "src/server/**/*.ts", "src/lib/**/*.ts", "src/types.ts"]
+  "include": ["vite.config.ts", "src/server/**/*.ts", "src/lib/**/*.ts", "src/types.ts", "api/**/*.ts"]
 }

@@ -16,6 +16,8 @@ type TranslateApiInput = {
   request: TranslationRequest;
 };
 
+type RequestChunk = { toString: (encoding?: string) => string } | string;
+
 function jsonResponse(
   res: {
     statusCode?: number;
@@ -31,21 +33,56 @@ function jsonResponse(
 }
 
 function readRequestBody(req: {
-  on: (event: string, handler: (chunk?: { toString: (encoding?: string) => string } | string) => void) => void;
+  body?: unknown;
+  on?: (event: string, handler: (chunk?: RequestChunk) => void) => void;
 }): Promise<string> {
+  if (typeof req.body === 'string') {
+    return Promise.resolve(req.body);
+  }
+
+  if (req.body instanceof Uint8Array) {
+    return Promise.resolve(new TextDecoder().decode(req.body));
+  }
+
+  if (req.body instanceof ArrayBuffer) {
+    return Promise.resolve(new TextDecoder().decode(new Uint8Array(req.body)));
+  }
+
+  if (typeof req.body === 'object' && req.body !== null) {
+    return Promise.resolve(JSON.stringify(req.body));
+  }
+
+  if (typeof req.on !== 'function') {
+    return Promise.resolve('');
+  }
+
+  const on = req.on;
+
   return new Promise((resolve, reject) => {
     let data = '';
 
-    req.on('data', (chunk) => {
+    on('data', (chunk) => {
       if (typeof chunk === 'undefined') {
         return;
       }
 
       data += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
     });
-    req.on('end', () => resolve(data));
-    req.on('error', reject);
+    on('end', () => resolve(data));
+    on('error', reject);
   });
+}
+
+function pathnameMatches(url: string | undefined, expectedPath: string) {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    return new URL(url, 'http://localhost').pathname === expectedPath;
+  } catch {
+    return url === expectedPath;
+  }
 }
 
 function ensureShape(
@@ -418,10 +455,8 @@ export async function handleTranslateApi(
   req: {
     method?: string;
     url?: string;
-    on: (
-      event: string,
-      handler: (chunk?: { toString: (encoding?: string) => string } | string) => void,
-    ) => void;
+    body?: unknown;
+    on?: (event: string, handler: (chunk?: RequestChunk) => void) => void;
   },
   res: {
     statusCode?: number;
@@ -429,7 +464,7 @@ export async function handleTranslateApi(
     end: (body?: string) => void;
   },
 ) {
-  if (req.url !== '/api/translate') {
+  if (!pathnameMatches(req.url, '/api/translate')) {
     return false;
   }
 
