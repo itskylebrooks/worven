@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, RotateCcw, Trash2, X } from 'lucide-react';
+import { ArrowRight, Trash2, Undo2, X } from 'lucide-react';
+import { useAnimatedModal } from '../hooks/useAnimatedModal';
 import type { TranslationHistoryItem } from '../types';
 
 interface HistoryPanelProps {
@@ -44,80 +44,15 @@ export function HistoryPanel({
   onDelete,
   onClear,
 }: HistoryPanelProps) {
-  const [visible, setVisible] = useState(open);
-  const [closing, setClosing] = useState(false);
-  const [entering, setEntering] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-  const enterRaf = useRef<number | null>(null);
+  const { visible, closing, entering, beginClose } = useAnimatedModal({
+    open,
+    onClose,
+  });
   const hasItems = items.length > 0;
 
-  const timestampFormatter = useMemo(
-    () => (value: string) => formatHistoryTimestamp(value),
-    [],
-  );
-
-  useEffect(() => {
-    if (open) {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      if (enterRaf.current) cancelAnimationFrame(enterRaf.current);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setVisible(true);
-      setClosing(false);
-      setEntering(true);
-      enterRaf.current = requestAnimationFrame(() => {
-        enterRaf.current = requestAnimationFrame(() => setEntering(false));
-      });
-    } else if (visible) {
-      setClosing(true);
-      timeoutRef.current = window.setTimeout(() => {
-        setVisible(false);
-        setClosing(false);
-      }, 220);
-    }
-  }, [open, visible]);
-
-  useEffect(
-    () => () => {
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-      if (enterRaf.current) cancelAnimationFrame(enterRaf.current);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!visible) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [visible]);
-
-  const beginClose = useCallback(() => {
-    if (closing) return;
-    setClosing(true);
-    timeoutRef.current = window.setTimeout(() => {
-      onClose();
-      setVisible(false);
-      setClosing(false);
-    }, 220);
-  }, [closing, onClose]);
-
-  useEffect(() => {
-    if (!visible) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key === 'Esc') {
-        beginClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [visible, beginClose]);
-
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   return (
     <div
@@ -228,7 +163,7 @@ export function HistoryPanel({
                       aria-label="Restore history item"
                       title="Use"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <Undo2 className="h-4 w-4" />
                     </button>
 
                     <button
@@ -243,7 +178,7 @@ export function HistoryPanel({
                   </div>
 
                   <div className="mt-2.5 text-xs text-soft">
-                    {timestampFormatter(item.createdAt)}
+                    {formatHistoryTimestamp(item.createdAt)}
                   </div>
                 </article>
               );

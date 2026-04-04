@@ -1,4 +1,9 @@
-import type { TranslationHistoryItem } from '../types';
+import type {
+  SentenceTranslationPayload,
+  TranslationHistoryItem,
+  TranslationResult,
+  WordTranslationPayload,
+} from '../types';
 
 export const HISTORY_STORAGE_KEY = 'worven-history';
 const MAX_HISTORY_ITEMS = 40;
@@ -9,6 +14,50 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isWordTranslationPayload(value: unknown): value is WordTranslationPayload {
+  return (
+    isRecord(value) &&
+    typeof value.primary === 'string' &&
+    Array.isArray(value.alternatives) &&
+    value.alternatives.every(
+      (item) =>
+        isRecord(item) && typeof item.term === 'string' && typeof item.gloss === 'string',
+    ) &&
+    isRecord(value.grammar) &&
+    typeof value.grammar.notes === 'string' &&
+    typeof value.pronunciation === 'string' &&
+    Array.isArray(value.examples) &&
+    value.examples.every(
+      (item) =>
+        isRecord(item) && typeof item.source === 'string' && typeof item.target === 'string',
+    )
+  );
+}
+
+function isSentenceTranslationPayload(value: unknown): value is SentenceTranslationPayload {
+  return (
+    isRecord(value) &&
+    typeof value.translation === 'string' &&
+    (typeof value.alternative === 'string' || value.alternative === null)
+  );
+}
+
+function isTranslationResult(value: unknown): value is TranslationResult {
+  if (!isRecord(value) || typeof value.sourceText !== 'string') {
+    return false;
+  }
+
+  if (value.mode === 'word') {
+    return isWordTranslationPayload(value.data);
+  }
+
+  if (value.mode === 'sentence') {
+    return isSentenceTranslationPayload(value.data);
+  }
+
+  return false;
 }
 
 function isTranslationHistoryItem(value: unknown): value is TranslationHistoryItem {
@@ -27,9 +76,7 @@ function isTranslationHistoryItem(value: unknown): value is TranslationHistoryIt
     typeof value.context === 'string' &&
     (typeof value.sentenceAlternatives === 'undefined' || isStringArray(value.sentenceAlternatives)) &&
     (value.directionMode === 'source_to_target' || value.directionMode === 'target_to_native') &&
-    isRecord(value.result) &&
-    typeof value.result.mode === 'string' &&
-    typeof value.result.sourceText === 'string'
+    isTranslationResult(value.result)
   );
 }
 

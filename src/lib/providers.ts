@@ -5,6 +5,37 @@ import type {
   WordTranslationPayload,
 } from '../types';
 
+type TranslateApiResult = WordTranslationPayload | SentenceTranslationPayload;
+
+interface TranslateApiResponse {
+  result?: TranslateApiResult;
+  error?: string;
+}
+
+function isTranslateApiResult(value: unknown): value is TranslateApiResult {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  if ('primary' in value) {
+    return typeof value.primary === 'string';
+  }
+
+  return 'translation' in value && typeof value.translation === 'string';
+}
+
+function parseTranslateApiResponse(value: unknown): TranslateApiResponse | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const result = isTranslateApiResult(candidate.result) ? candidate.result : undefined;
+  const error = typeof candidate.error === 'string' ? candidate.error : undefined;
+
+  return { result, error };
+}
+
 export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string,
@@ -24,18 +55,10 @@ export async function translateWithProvider(
     }),
   });
 
-  let data:
-    | {
-        result?: WordTranslationPayload | SentenceTranslationPayload;
-        error?: string;
-      }
-    | null = null;
+  let data: TranslateApiResponse | null = null;
 
   try {
-    data = (await response.json()) as {
-      result?: WordTranslationPayload | SentenceTranslationPayload;
-      error?: string;
-    };
+    data = parseTranslateApiResponse(await response.json());
   } catch {
     data = null;
   }

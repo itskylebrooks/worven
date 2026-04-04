@@ -25,7 +25,6 @@ import {
 } from './lib/settings';
 import type {
   AppSettings,
-  SentenceTranslationPayload,
   TranslationDirectionMode,
   TranslationHistoryItem,
   TranslationRequest,
@@ -51,6 +50,50 @@ export default function App() {
   const copyTimeoutRef = useRef<number | null>(null);
   const hasLocalSettingsChanges = useRef(false);
   const requestVersionRef = useRef(0);
+
+  function createHistoryItemId() {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function resolveSentenceAlternatives(
+    nextResult: TranslationResult,
+    fallbackAlternatives?: string[],
+  ) {
+    if (fallbackAlternatives && fallbackAlternatives.length > 0) {
+      return fallbackAlternatives;
+    }
+
+    return nextResult.mode === 'sentence' && nextResult.data.alternative
+      ? [nextResult.data.alternative]
+      : [];
+  }
+
+  function cancelPendingRequest() {
+    requestVersionRef.current += 1;
+  }
+
+  function clearTranslationSelection() {
+    setSentenceAlternatives([]);
+    setActiveHistoryItemId(null);
+  }
+
+  function resetRequestState() {
+    setIsLoading(false);
+    setIsLoadingAlternative(false);
+    setError(null);
+  }
+
+  function resetTranslationOutput(options?: { clearSourceText?: boolean }) {
+    resetRequestState();
+    clearTranslationSelection();
+    setResult(null);
+
+    if (options?.clearSourceText) {
+      setSourceText('');
+    }
+  }
 
   function updateSettings(next: React.SetStateAction<AppSettings>) {
     hasLocalSettingsChanges.current = true;
@@ -117,6 +160,12 @@ export default function App() {
     return () => mediaQuery.removeListener(handleChange);
   }, [settings.themeMode]);
 
+  async function runTranslation(
+    request: TranslationRequest & { mode: 'word' },
+  ): Promise<Extract<TranslationResult, { mode: 'word' }>['data']>;
+  async function runTranslation(
+    request: TranslationRequest & { mode: 'sentence' },
+  ): Promise<Extract<TranslationResult, { mode: 'sentence' }>['data']>;
   async function runTranslation(request: TranslationRequest) {
     return translateWithProvider(
       settings.provider,
@@ -137,38 +186,36 @@ export default function App() {
     setError(null);
     setIsLoading(true);
     setIsLoadingAlternative(false);
-    setSentenceAlternatives([]);
-    setActiveHistoryItemId(null);
+    clearTranslationSelection();
 
     const mode = classifyInput(trimmed);
     const requestVersion = ++requestVersionRef.current;
+    const requestBase = {
+      sourceText: trimmed,
+      targetLanguage:
+        directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage,
+      nativeLanguage: settings.nativeLanguage,
+      context: settings.translationContext,
+      detailFocus: directionMode === 'source_to_target' ? 'target' : 'source',
+      sourceLanguageHint:
+        directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
+    } as const;
 
     try {
-      const payload = await runTranslation({
-        sourceText: trimmed,
-        targetLanguage:
-          directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage,
-        nativeLanguage: settings.nativeLanguage,
-        context: settings.translationContext,
-        mode,
-        detailFocus: directionMode === 'source_to_target' ? 'target' : 'source',
-        sourceLanguageHint:
-          directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
-      });
-
-      const nextResult = {
-        mode,
-        data: payload as TranslationResult['data'],
-        sourceText: trimmed,
-      } as TranslationResult;
-      const nextHistoryItemId =
-        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const initialSentenceAlternatives =
-        nextResult.mode === 'sentence' && nextResult.data.alternative
-          ? [nextResult.data.alternative]
-          : [];
+      const nextResult: TranslationResult =
+        mode === 'word'
+          ? {
+              mode,
+              data: await runTranslation({ ...requestBase, mode }),
+              sourceText: trimmed,
+            }
+          : {
+              mode,
+              data: await runTranslation({ ...requestBase, mode }),
+              sourceText: trimmed,
+            };
+      const nextHistoryItemId = createHistoryItemId();
+      const initialSentenceAlternatives = resolveSentenceAlternatives(nextResult);
 
       if (requestVersion !== requestVersionRef.current) {
         return;
@@ -220,14 +267,14 @@ export default function App() {
     const requestVersion = ++requestVersionRef.current;
 
     try {
-      const payload = (await runTranslation({
+      const payload = await runTranslation({
         sourceText: result.sourceText,
         targetLanguage: settings.targetLanguage,
         nativeLanguage: settings.nativeLanguage,
         context: settings.translationContext,
         mode: 'sentence',
         requestAlternative: true,
-      })) as SentenceTranslationPayload;
+      });
 
       if (requestVersion !== requestVersionRef.current) {
         return;
@@ -276,14 +323,8 @@ export default function App() {
   }
 
   function clearInput() {
-    requestVersionRef.current += 1;
-    setIsLoading(false);
-    setIsLoadingAlternative(false);
-    setError(null);
-    setResult(null);
-    setSentenceAlternatives([]);
-    setActiveHistoryItemId(null);
-    setSourceText('');
+    cancelPendingRequest();
+    resetTranslationOutput({ clearSourceText: true });
   }
 
   function handleTextareaKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -299,16 +340,11 @@ export default function App() {
   }
 
   function toggleDirectionMode() {
-    requestVersionRef.current += 1;
+    cancelPendingRequest();
     setDirectionMode((current) =>
       current === 'source_to_target' ? 'target_to_native' : 'source_to_target',
     );
-    setIsLoading(false);
-    setIsLoadingAlternative(false);
-    setResult(null);
-    setError(null);
-    setSentenceAlternatives([]);
-    setActiveHistoryItemId(null);
+    resetTranslationOutput();
   }
 
   const leftPanelLabel = directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
@@ -343,7 +379,7 @@ export default function App() {
   }
 
   function handleRestoreHistoryItem(item: TranslationHistoryItem) {
-    requestVersionRef.current += 1;
+    cancelPendingRequest();
     updateSettings((current) => ({
       ...current,
       provider: item.provider,
@@ -353,19 +389,11 @@ export default function App() {
       translationContext: item.context,
     }));
     setDirectionMode(item.directionMode);
-    setIsLoading(false);
-    setIsLoadingAlternative(false);
+    resetRequestState();
     setSourceText(item.sourceText);
     setResult(item.result);
-    setSentenceAlternatives(
-      item.sentenceAlternatives && item.sentenceAlternatives.length > 0
-        ? item.sentenceAlternatives
-        : item.result.mode === 'sentence' && item.result.data.alternative
-          ? [item.result.data.alternative]
-          : [],
-    );
+    setSentenceAlternatives(resolveSentenceAlternatives(item.result, item.sentenceAlternatives));
     setActiveHistoryItemId(item.id);
-    setError(null);
     setHistoryOpen(false);
   }
 

@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   Linkedin,
@@ -11,6 +10,7 @@ import {
 } from 'lucide-react';
 import pkg from '../../package.json';
 import { SUPPORTED_LANGUAGES, TRANSLATION_CONTEXTS } from '../constants/languages';
+import { useAnimatedModal } from '../hooks/useAnimatedModal';
 import { PROVIDER_LABELS, PROVIDER_MODELS } from '../lib/settings';
 import type { AppSettings, ProviderId } from '../types';
 
@@ -57,73 +57,11 @@ function ThemeButton({ active, label, icon, onClick }: ThemeButtonProps) {
 }
 
 export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPanelProps) {
-  const [visible, setVisible] = useState(open);
-  const [closing, setClosing] = useState(false);
-  const [entering, setEntering] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-  const enterRaf = useRef<number | null>(null);
+  const { visible, closing, entering, beginClose } = useAnimatedModal({
+    open,
+    onClose,
+  });
   const providerModels = PROVIDER_MODELS[settings.provider];
-
-  useEffect(() => {
-    if (open) {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      if (enterRaf.current) cancelAnimationFrame(enterRaf.current);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setVisible(true);
-      setClosing(false);
-      setEntering(true);
-      enterRaf.current = requestAnimationFrame(() => {
-        enterRaf.current = requestAnimationFrame(() => setEntering(false));
-      });
-    } else if (visible) {
-      setClosing(true);
-      timeoutRef.current = window.setTimeout(() => {
-        setVisible(false);
-        setClosing(false);
-      }, 220);
-    }
-  }, [open, visible]);
-
-  useEffect(
-    () => () => {
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-      if (enterRaf.current) cancelAnimationFrame(enterRaf.current);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!visible) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [visible]);
-
-  const beginClose = useCallback(() => {
-    if (closing) return;
-    setClosing(true);
-    timeoutRef.current = window.setTimeout(() => {
-      onClose();
-      setVisible(false);
-      setClosing(false);
-    }, 220);
-  }, [closing, onClose]);
-
-  useEffect(() => {
-    if (!visible) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key === 'Esc') {
-        beginClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [visible, beginClose]);
 
   async function handleShare() {
     try {
@@ -166,7 +104,9 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
     });
   }
 
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   return (
     <div
