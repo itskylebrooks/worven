@@ -60,9 +60,9 @@ export function OutputPanel({
         )}
       </div>
 
-      <div className="min-h-[20rem] overflow-hidden px-6 py-5">
+      <div className="panel-body overflow-hidden">
         {isLoading ? (
-          <div className="grid min-h-[15rem] place-items-center">
+          <div className="panel-content grid place-items-center">
             <div className="space-y-4 text-center">
               <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-subtle text-accent">
                 <Sparkles className="h-6 w-6 animate-pulse" />
@@ -73,90 +73,92 @@ export function OutputPanel({
             </div>
           </div>
         ) : error ? (
-          <div className="panel-shell p-4 text-sm text-strong">{error}</div>
+          <div className="panel-content">
+            <div className="panel-shell p-4 text-sm text-strong">{error}</div>
+          </div>
         ) : (
-          <AnimatePresence mode="wait">
-            {result ? (
-              <motion.div
-                key={`${result.mode}:${result.sourceText}`}
-                {...cardMotion}
-                className="flex min-h-[15rem] flex-col overflow-hidden"
-              >
-                {result.mode === 'word' ? (
-                  <div className="flex min-h-[15rem] flex-col overflow-hidden">
-                    <div className="translation-scroll-area">
-                      <div className="translation-main-text font-medium leading-tight text-strong">
-                        {result.data.primary}
+          <>
+            <div className="panel-content">
+              <AnimatePresence mode="wait">
+                {result ? (
+                  <motion.div
+                    key={`${result.mode}:${result.sourceText}`}
+                    {...cardMotion}
+                    className="flex h-full min-h-0 flex-col overflow-hidden"
+                  >
+                    {result.mode === 'word' ? (
+                      <div className="translation-scroll-area">
+                        <div className="translation-main-text font-medium leading-tight text-strong">
+                          {result.data.primary}
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="mt-auto pt-5">
-                      <div className="flex items-center justify-start gap-4">
-                        <button
-                          type="button"
-                          onClick={onCopyTranslation}
-                          className="icon-button"
-                          aria-label="Copy translation"
-                          title="Copy"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
+                    ) : (
+                      <div className="translation-scroll-area">
+                        <div className="translation-main-text translation-main-text-preserve font-medium leading-tight text-strong">
+                          {result.data.translation}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    )}
+                  </motion.div>
                 ) : (
-                  <div className="flex min-h-[15rem] flex-col overflow-hidden">
-                    <div className="translation-scroll-area">
-                      <div className="translation-main-text translation-main-text-preserve font-medium leading-tight text-strong">
-                        {result.data.translation}
+                  <div className="grid h-full place-items-center text-center">
+                    <div className="max-w-sm space-y-4">
+                      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">
+                        <Languages className="h-7 w-7" />
                       </div>
-                    </div>
-
-                    <div className="mt-auto pt-5">
-                      <div className="flex items-center justify-between gap-4">
-                        <button
-                          type="button"
-                          onClick={onCopyTranslation}
-                          className="icon-button"
-                          aria-label="Copy translation"
-                          title="Copy"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onShowAlternative}
-                          disabled={isLoadingAlternative}
-                          className="icon-button"
-                          aria-label={
-                            isLoadingAlternative ? 'Loading alternative' : 'Show alternative'
-                          }
-                          title={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
-                        >
-                          {isLoadingAlternative ? (
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RotateCcw className="h-4 w-4" />
-                          )}
-                        </button>
+                      <div>
+                        <p className="text-lg font-medium text-strong">Ready</p>
                       </div>
                     </div>
                   </div>
                 )}
-              </motion.div>
-            ) : (
-              <div className="grid min-h-[15rem] place-items-center text-center">
-                <div className="max-w-sm space-y-4">
-                  <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">
-                    <Languages className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-medium text-strong">Ready</p>
+              </AnimatePresence>
+            </div>
+
+            {result ? (
+              result.mode === 'word' ? (
+                <div className="panel-actions justify-start">
+                  <div className="flex items-center justify-start gap-4">
+                    <button
+                      type="button"
+                      onClick={onCopyTranslation}
+                      className="icon-button"
+                      aria-label="Copy translation"
+                      title="Copy"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
-            )}
-          </AnimatePresence>
+              ) : (
+                <div className="panel-actions">
+                  <button
+                    type="button"
+                    onClick={onCopyTranslation}
+                    className="icon-button"
+                    aria-label="Copy translation"
+                    title="Copy"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onShowAlternative}
+                    disabled={isLoadingAlternative}
+                    className="icon-button"
+                    aria-label={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
+                    title={isLoadingAlternative ? 'Loading alternative' : 'Show alternative'}
+                  >
+                    {isLoadingAlternative ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              )
+            ) : null}
+          </>
         )}
       </div>
     </section>

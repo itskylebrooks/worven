@@ -285,18 +285,20 @@ export default function App() {
                 )}
               </div>
 
-              <div className="relative min-h-[20rem] px-6 py-5">
-                <textarea
-                  id="source-text"
-                  className="translator-textarea translator-textarea-size-default"
-                  value={sourceText}
-                  onChange={(event) => setSourceText(event.target.value)}
-                  onKeyDown={handleTextareaKeyDown}
-                  placeholder="Type here"
-                  spellCheck={false}
-                />
+              <div className="panel-body">
+                <div className="panel-content">
+                  <textarea
+                    id="source-text"
+                    className="translator-textarea translator-textarea-size-default"
+                    value={sourceText}
+                    onChange={(event) => setSourceText(event.target.value)}
+                    onKeyDown={handleTextareaKeyDown}
+                    placeholder="Type here"
+                    spellCheck={false}
+                  />
+                </div>
 
-                <div className="absolute bottom-5 left-6 right-6 flex items-end justify-between gap-4">
+                <div className="panel-actions">
                   <div>
                     {sourceText.trim() ? (
                       <button
