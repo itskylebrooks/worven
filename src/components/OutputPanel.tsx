@@ -58,7 +58,7 @@ export function OutputPanel({
         )}
       </div>
 
-      <div className="min-h-[20rem] px-6 py-5">
+      <div className="min-h-[20rem] overflow-hidden px-6 py-5">
         {isLoading ? (
           <div className="grid min-h-[15rem] place-items-center">
             <div className="space-y-4 text-center">
@@ -78,38 +78,35 @@ export function OutputPanel({
               <motion.div
                 key={`${result.mode}:${result.sourceText}`}
                 {...cardMotion}
-                className="flex min-h-[15rem] flex-col"
+                className="flex min-h-[15rem] flex-col overflow-hidden"
               >
                 {result.mode === 'word' ? (
-                  <div className="flex min-h-[15rem] flex-col">
-                    <div className="translation-main-text font-medium leading-tight text-strong">
-                      {result.data.primary}
+                  <div className="flex min-h-[15rem] flex-col overflow-hidden">
+                    <div className="translation-scroll-area">
+                      <div className="translation-main-text font-medium leading-tight text-strong">
+                        {result.data.primary}
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex min-h-[15rem] flex-col">
-                    <div className="translation-main-text font-medium leading-tight text-strong">
-                      {result.data.translation}
+                  <div className="flex min-h-[15rem] flex-col overflow-hidden">
+                    <div className="translation-scroll-area">
+                      <div className="translation-main-text font-medium leading-tight text-strong">
+                        {result.data.translation}
+                      </div>
                     </div>
 
-                    <div className="mt-auto border-t border-subtle pt-5">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="text-sm text-muted">Alternative</div>
+                    <div className="mt-auto pt-5">
+                      <div className="flex items-center justify-end gap-4">
                         <button
                           type="button"
                           onClick={onShowAlternative}
                           disabled={isLoadingAlternative}
-                          className="secondary-button"
+                          className="secondary-button h-10 rounded-full px-4"
                         >
                           {isLoadingAlternative ? 'Loading...' : 'Show alternative'}
                         </button>
                       </div>
-
-                      {result.data.alternative ? (
-                        <p className="mt-4 text-sm leading-6 text-muted">
-                          {result.data.alternative}
-                        </p>
-                      ) : null}
                     </div>
                   </div>
                 )}

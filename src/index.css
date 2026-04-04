@@ -289,6 +289,10 @@ select,
     @apply text-xl sm:text-2xl;
   }
 
+  .translation-scroll-area {
+    @apply h-[15rem] min-h-0 overflow-y-auto pr-2;
+  }
+
   .input-field:focus,
   .textarea-field:focus,
   .select-field:focus {

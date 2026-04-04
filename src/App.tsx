@@ -195,6 +195,10 @@ export default function App() {
     directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
   const rightPanelLabel =
     directionMode === 'source_to_target' ? settings.targetLanguage : 'Source';
+  const sentenceAlternative =
+    result?.mode === 'sentence' ? result.data.alternative : null;
+  const showSentenceAlternativePanel =
+    result?.mode === 'sentence' && (isLoadingAlternative || Boolean(sentenceAlternative));
 
   function handleRestoreHistoryItem(item: TranslationHistoryItem) {
     setSettings((current) => ({
@@ -295,6 +299,17 @@ export default function App() {
               onShowAlternative={() => void handleAlternative()}
             />
           </section>
+
+          {showSentenceAlternativePanel ? (
+            <section className={`${panelAccent} mt-4 px-6 py-5`}>
+              <div className="word-section-label">Alternative</div>
+              {isLoadingAlternative ? (
+                <p className="mt-4 text-sm leading-6 text-muted">Loading alternative...</p>
+              ) : sentenceAlternative ? (
+                <p className="mt-4 text-sm leading-6 text-muted">{sentenceAlternative}</p>
+              ) : null}
+            </section>
+          ) : null}
 
           {result?.mode === 'word' && !isLoading && !error ? (
             <WordDetailsPanel data={result.data} />
