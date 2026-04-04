@@ -64,13 +64,51 @@ function ensureShape(
       throw new Error('The provider response did not match the expected word JSON shape.');
     }
 
-    const alternatives = wordPayload.alternatives
-      .filter(
-        (item): item is WordTranslationPayload['alternatives'][number] =>
+    const primarySplit = splitPrimaryAndFallbackAlternatives(wordPayload.primary);
+
+    const rawAlternatives = wordPayload.alternatives as unknown[];
+
+    const alternatives = rawAlternatives
+      .map((item) => {
+        if (typeof item === 'string') {
+          return {
+            term: item.trim(),
+            gloss: '',
+          };
+        }
+
+        if (
           typeof item === 'object' &&
           item !== null &&
-          typeof item.target === 'string' &&
-          typeof item.source === 'string',
+          typeof (item as { term?: unknown }).term === 'string' &&
+          typeof (item as { gloss?: unknown }).gloss === 'string'
+        ) {
+          return item as WordTranslationPayload['alternatives'][number];
+        }
+
+        if (
+          typeof item === 'object' &&
+          item !== null &&
+          typeof (item as { target?: unknown }).target === 'string' &&
+          typeof (item as { source?: unknown }).source === 'string'
+        ) {
+          return {
+            term: ((item as { target: string }).target || '').trim(),
+            gloss: ((item as { source: string }).source || '').trim(),
+          };
+        }
+
+        return null;
+      })
+      .filter(
+        (item): item is WordTranslationPayload['alternatives'][number] =>
+          item !== null && item.term.trim().length > 0,
+      )
+      .concat(primarySplit.fallbackAlternatives.map((term) => ({ term, gloss: '' })))
+      .filter(
+        (item, index, items) =>
+          items.findIndex((candidate) => candidate.term.toLowerCase() === item.term.toLowerCase()) ===
+          index,
       )
       .slice(0, 3);
 
@@ -85,7 +123,7 @@ function ensureShape(
       .slice(0, 3);
 
     return {
-      primary: wordPayload.primary,
+      primary: primarySplit.primary,
       alternatives,
       grammar: { notes: normalizeNoteQuotes(wordPayload.grammar.notes) },
       pronunciation: wordPayload.pronunciation,
@@ -108,7 +146,34 @@ function normalizeNoteQuotes(notes: string) {
   return notes
     .replace(/[“”]/g, '"')
     .replace(/‘([^’]+)’/g, '"$1"')
-    .replace(/'([^']+)'/g, '"$1"');
+    .replace(/'([^']+)'/g, '"$1"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitPrimaryAndFallbackAlternatives(primary: string) {
+  const normalized = primary.replace(/\s+/g, ' ').trim();
+  const pieces = normalized
+    .split(/\s*(?:,|;|\/|\|)\s*/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const looksLikeList =
+    pieces.length > 1 &&
+    pieces.length <= 5 &&
+    pieces.every((item) => item.split(/\s+/).length <= 4);
+
+  if (!looksLikeList) {
+    return {
+      primary: normalized,
+      fallbackAlternatives: [] as string[],
+    };
+  }
+
+  return {
+    primary: pieces[0],
+    fallbackAlternatives: pieces.slice(1),
+  };
 }
 
 function extractOpenAIText(data: unknown): string {

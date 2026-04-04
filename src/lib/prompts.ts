@@ -110,6 +110,11 @@ function buildSentenceSchema(): JsonSchema {
 
 export function buildTranslationPrompts(request: TranslationRequest) {
   const contextInstruction = CONTEXT_INSTRUCTIONS[request.context];
+  const detailFocus = request.detailFocus ?? 'target';
+  const focusLanguage =
+    detailFocus === 'target'
+      ? request.targetLanguage
+      : request.sourceLanguageHint || 'the detected source language';
   const baseRules = [
     'You are a translation engine.',
     'Auto-detect the source language from the user input.',
@@ -128,9 +133,10 @@ export function buildTranslationPrompts(request: TranslationRequest) {
         ...baseRules,
         'Treat the source as a standalone lexical item or very short phrase, not as a full sentence.',
         'Prefer dictionary-quality translations that a learner could reuse confidently.',
+        `Explain and contextualize the focus lexical item in ${focusLanguage}.`,
         'Return alternatives that are genuinely different common renderings, not tiny rewrites of the same phrase.',
-        'For grammar.notes, include whatever linguistic metadata is most useful for the target language.',
-        `Pronunciation must be written in the user native language/script: ${request.nativeLanguage}.`,
+        `Write grammar.notes in ${request.nativeLanguage}, explain meaning and usage clearly, and use double quotes instead of single quotes.`,
+        `Pronunciation must refer to the focus lexical item and be written in the user native language/script: ${request.nativeLanguage}.`,
       ].join(' '),
       userPrompt: `
 Translate this input in word mode.
@@ -144,8 +150,8 @@ Return exactly this JSON shape:
 {
   "primary": "string",
   "alternatives": [
-    { "target": "string", "source": "string" },
-    { "target": "string", "source": "string" }
+    { "term": "string", "gloss": "string" },
+    { "term": "string", "gloss": "string" }
   ],
   "grammar": { "notes": "string" },
   "pronunciation": "string",
@@ -156,9 +162,12 @@ Return exactly this JSON shape:
 }
 
 Requirements:
-- Provide 2 or 3 alternatives.
-- For each alternative, provide the target-language word plus a short source-language gloss.
-- Provide 2 or 3 concise source/target example pairs.
+- "primary" should be the best main translation in the requested target language.
+- If detailFocus is "target", explain the translated target-language word or phrase.
+- If detailFocus is "source", explain the source-language word or phrase the user entered.
+- Provide exactly 3 alternatives.
+- For each alternative, provide the focus-language term plus a short gloss in ${request.nativeLanguage}.
+- Provide exactly 3 concise source/target example pairs.
 - Keep examples natural, useful, and short.
 `.trim(),
     };

@@ -16,8 +16,8 @@ export interface WordUsageExample {
 }
 
 export interface WordAlternative {
-  target: string;
-  source: string;
+  term: string;
+  gloss: string;
 }
 
 export interface WordTranslationPayload {
@@ -41,6 +41,8 @@ export interface TranslationRequest {
   nativeLanguage: string;
   context: TranslationContext;
   mode: TranslationMode;
+  detailFocus?: 'source' | 'target';
+  sourceLanguageHint?: string;
   requestAlternative?: boolean;
 }
 

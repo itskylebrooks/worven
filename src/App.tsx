@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { ArrowRightLeft, Sparkles, X } from 'lucide-react';
 import { Header } from './components/Header';
 import { OutputPanel } from './components/OutputPanel';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -15,9 +15,11 @@ import type {
 } from './types';
 
 const panelAccent = 'rounded-[1.75rem] border border-subtle bg-surface-elevated shadow-sm';
+type TranslationDirectionMode = 'source_to_target' | 'target_to_native';
 
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const [directionMode, setDirectionMode] = useState<TranslationDirectionMode>('source_to_target');
   const [sourceText, setSourceText] = useState('');
   const [result, setResult] = useState<TranslationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +77,14 @@ export default function App() {
     try {
       const payload = await runTranslation({
         sourceText: trimmed,
-        targetLanguage: settings.targetLanguage,
+        targetLanguage:
+          directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage,
         nativeLanguage: settings.nativeLanguage,
         context: settings.translationContext,
         mode,
+        detailFocus: directionMode === 'source_to_target' ? 'target' : 'source',
+        sourceLanguageHint:
+          directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
       });
 
       setResult({
@@ -153,6 +159,19 @@ export default function App() {
     }
   }
 
+  function toggleDirectionMode() {
+    setDirectionMode((current) =>
+      current === 'source_to_target' ? 'target_to_native' : 'source_to_target',
+    );
+    setResult(null);
+    setError(null);
+  }
+
+  const sourceLanguageLabel =
+    directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage;
+  const outputLanguageLabel =
+    directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage;
+
   return (
     <div className="bg-app text-strong">
       <div className="mx-auto max-w-[64rem] px-4 pb-24 sm:pb-6">
@@ -164,11 +183,11 @@ export default function App() {
         />
 
         <main className="mt-4">
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section className="relative grid gap-4 lg:grid-cols-2">
             <section className={`${panelAccent} overflow-hidden`}>
               <div className="border-b border-subtle px-6 py-5 text-center">
                 <h1 className="text-base font-semibold uppercase tracking-[0.08em] text-strong">
-                  Source
+                  {sourceLanguageLabel}
                 </h1>
               </div>
 
@@ -211,12 +230,24 @@ export default function App() {
               </div>
             </section>
 
+            <button
+              type="button"
+              onClick={toggleDirectionMode}
+              className="absolute left-1/2 top-6 z-10 hidden h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full border border-subtle bg-surface-elevated text-muted shadow-sm transition hover-nonaccent lg:inline-flex"
+              aria-label="Switch translation direction"
+              title="Switch translation direction"
+            >
+              <ArrowRightLeft className="h-5 w-5" />
+            </button>
+
             <OutputPanel
               result={result}
               isLoading={isLoading}
               isLoadingAlternative={isLoadingAlternative}
               error={error}
-              targetLanguage={settings.targetLanguage}
+              displayLanguageLabel={outputLanguageLabel}
+              canChangeLanguage={directionMode === 'source_to_target'}
+              selectedTargetLanguage={settings.targetLanguage}
               onTargetLanguageChange={(targetLanguage) =>
                 setSettings((current) => ({ ...current, targetLanguage }))
               }

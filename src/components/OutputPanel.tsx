@@ -8,7 +8,9 @@ interface OutputPanelProps {
   isLoading: boolean;
   isLoadingAlternative: boolean;
   error: string | null;
-  targetLanguage: string;
+  displayLanguageLabel: string;
+  canChangeLanguage: boolean;
+  selectedTargetLanguage: string;
   onTargetLanguageChange: (language: string) => void;
   onShowAlternative: () => void;
 }
@@ -24,30 +26,36 @@ export function OutputPanel({
   isLoading,
   isLoadingAlternative,
   error,
-  targetLanguage,
+  displayLanguageLabel,
+  canChangeLanguage,
+  selectedTargetLanguage,
   onTargetLanguageChange,
   onShowAlternative,
 }: OutputPanelProps) {
   return (
     <section className="panel-shell overflow-hidden">
       <div className="border-b border-subtle px-6 py-5 text-center">
-        <div className="target-language-select-shell">
-          <span className="target-language-select-label" aria-hidden="true">
-            {targetLanguage}
-          </span>
-          <select
-            value={targetLanguage}
-            onChange={(event) => onTargetLanguageChange(event.target.value)}
-            className="target-language-select"
-            aria-label="Target language"
-          >
-            {SUPPORTED_LANGUAGES.map((language) => (
-              <option key={language} value={language}>
-                {language}
-              </option>
-            ))}
-          </select>
-        </div>
+        {canChangeLanguage ? (
+          <div className="target-language-select-shell">
+            <span className="target-language-select-label" aria-hidden="true">
+              {displayLanguageLabel}
+            </span>
+            <select
+              value={selectedTargetLanguage}
+              onChange={(event) => onTargetLanguageChange(event.target.value)}
+              className="target-language-select"
+              aria-label="Target language"
+            >
+              {SUPPORTED_LANGUAGES.map((language) => (
+                <option key={language} value={language}>
+                  {language}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="target-language-select-label">{displayLanguageLabel}</div>
+        )}
       </div>
 
       <div className="min-h-[20rem] px-6 py-5">

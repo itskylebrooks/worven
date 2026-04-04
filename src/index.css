@@ -319,11 +319,6 @@ select,
     @apply text-xs font-medium uppercase tracking-[0.18em] text-soft;
   }
 
-  .word-alt-row {
-    @apply rounded-2xl border border-subtle px-4 py-3;
-    background-color: var(--color-surface-alt);
-  }
-
   .word-alt-target {
     @apply text-sm font-medium leading-6 text-strong;
   }
@@ -341,8 +336,7 @@ select,
   }
 
   .word-pronunciation {
-    @apply allow-select rounded-xl border border-subtle px-3 py-2 text-sm text-strong;
-    background-color: var(--color-surface-alt);
+    @apply allow-select text-sm italic leading-6 text-strong;
     font-family:
       ui-monospace,
       SFMono-Regular,
