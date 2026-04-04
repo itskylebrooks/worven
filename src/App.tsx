@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRightLeft, Sparkles, X } from 'lucide-react';
+import { ArrowRightLeft } from 'lucide-react';
 import { Header } from './components/Header';
 import { HistoryPanel } from './components/HistoryPanel';
 import { OutputPanel } from './components/OutputPanel';
@@ -256,7 +256,6 @@ export default function App() {
                         className="secondary-button h-10 rounded-full px-4"
                         aria-label="Clear text"
                       >
-                        <X className="h-4 w-4" />
                         Clear
                       </button>
                     ) : null}
@@ -268,7 +267,6 @@ export default function App() {
                     disabled={isLoading}
                     className="translate-pill"
                   >
-                    <Sparkles className="h-4 w-4" />
                     {isLoading ? 'Translating...' : 'Translate'}
                   </button>
                 </div>

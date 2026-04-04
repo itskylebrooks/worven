@@ -320,7 +320,7 @@ select,
   }
 
   .word-section-label {
-    @apply text-xs font-medium uppercase tracking-[0.18em] text-soft;
+    @apply text-base font-semibold tracking-[0.01em] text-strong;
   }
 
   .word-alt-target {
@@ -328,7 +328,7 @@ select,
   }
 
   .word-alt-source {
-    @apply mt-0.5 text-sm leading-6 text-muted;
+    @apply mt-1 text-sm leading-6 text-muted;
   }
 
   .word-example-source {
