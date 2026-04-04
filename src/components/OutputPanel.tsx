@@ -91,7 +91,7 @@ export function OutputPanel({
                 ) : (
                   <div className="flex min-h-[15rem] flex-col overflow-hidden">
                     <div className="translation-scroll-area">
-                      <div className="translation-main-text font-medium leading-tight text-strong">
+                      <div className="translation-main-text translation-main-text-preserve font-medium leading-tight text-strong">
                         {result.data.translation}
                       </div>
                     </div>

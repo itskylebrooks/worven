@@ -120,6 +120,7 @@ export function buildTranslationPrompts(request: TranslationRequest) {
     'Translate into the requested target language.',
     `Apply this translation style exactly: ${contextInstruction}`,
     'Preserve meaning before ornamentation.',
+    'Preserve paragraph breaks and line breaks where they carry structure from the source text.',
     'Return valid JSON only.',
     'Do not wrap the JSON in markdown fences.',
     'Do not add commentary outside the JSON object.',
@@ -199,6 +200,7 @@ Return exactly this JSON shape:
 Requirements:
 - "translation" should be the best default translation.
 - "alternative" must be meaningfully different in tone, register, or phrasing.
+- Preserve the same paragraph structure as the source text.
 `.trim(),
     };
   }
@@ -223,6 +225,7 @@ Return exactly this JSON shape:
 Requirements:
 - "translation" should be the single best default translation.
 - "alternative" must be null.
+- Preserve the same paragraph structure as the source text.
 `.trim(),
   };
 }

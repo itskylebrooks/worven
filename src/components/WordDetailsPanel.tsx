@@ -6,7 +6,7 @@ interface WordDetailsPanelProps {
 
 export function WordDetailsPanel({ data }: WordDetailsPanelProps) {
   const pronunciation = data.pronunciation.trim();
-  const pronunciationMatch = pronunciation.match(/^([^([]+?)(\s*[\[(].*)?$/);
+  const pronunciationMatch = pronunciation.match(/^([^([]+?)(\s*[[()].*)?$/);
   const quotedPronunciation = pronunciationMatch?.[1]?.trim() || pronunciation;
   const pronunciationExplanation = pronunciationMatch?.[2]?.trim() || '';
 

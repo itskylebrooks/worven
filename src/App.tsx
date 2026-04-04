@@ -5,6 +5,7 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { OutputPanel } from './components/OutputPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { WordDetailsPanel } from './components/WordDetailsPanel';
+import { SUPPORTED_LANGUAGES } from './constants/languages';
 import { classifyInput } from './lib/classifier';
 import { addHistoryItem, clearHistory, loadHistory, removeHistoryItem } from './lib/history';
 import { applyTheme, loadSettings, persistSettings, PROVIDER_LABELS } from './lib/settings';
@@ -231,9 +232,34 @@ export default function App() {
           <section className="relative grid gap-4 lg:grid-cols-2">
             <section className={`${panelAccent} overflow-hidden`}>
               <div className="border-b border-subtle px-6 py-5 text-center">
-                <h1 className="text-base font-semibold uppercase tracking-[0.08em] text-strong">
-                  {leftPanelLabel}
-                </h1>
+                {directionMode === 'target_to_native' ? (
+                  <div className="target-language-select-shell">
+                    <span className="target-language-select-label" aria-hidden="true">
+                      {leftPanelLabel}
+                    </span>
+                    <select
+                      value={settings.targetLanguage}
+                      onChange={(event) =>
+                        setSettings((current) => ({
+                          ...current,
+                          targetLanguage: event.target.value,
+                        }))
+                      }
+                      className="target-language-select"
+                      aria-label="Foreign language"
+                    >
+                      {SUPPORTED_LANGUAGES.map((language) => (
+                        <option key={language} value={language}>
+                          {language}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <h1 className="text-base font-semibold uppercase tracking-[0.08em] text-strong">
+                    {leftPanelLabel}
+                  </h1>
+                )}
               </div>
 
               <div className="relative min-h-[20rem] px-6 py-5">
@@ -304,7 +330,9 @@ export default function App() {
               {isLoadingAlternative ? (
                 <p className="mt-4 text-sm leading-6 text-muted">Loading alternative...</p>
               ) : sentenceAlternative ? (
-                <p className="mt-4 text-sm leading-6 text-muted">{sentenceAlternative}</p>
+                <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted">
+                  {sentenceAlternative}
+                </p>
               ) : null}
             </section>
           ) : null}
