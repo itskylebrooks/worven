@@ -1,6 +1,11 @@
 import { LoaderCircle, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import type { VerbConjugationTense, WordTranslationPayload } from '../types';
+import { useMemo, useState } from 'react';
+import type {
+  NounCaseTable,
+  VerbConjugationTable,
+  VerbConjugationTense,
+  WordTranslationPayload,
+} from '../types';
 
 interface WordDetailsPanelProps {
   data: WordTranslationPayload;
@@ -14,6 +19,44 @@ const TENSE_OPTIONS: Array<{ key: VerbConjugationTense; label: string }> = [
   { key: 'future', label: 'Future' },
 ];
 
+function LabeledFormTables({
+  tables,
+  keyPrefix,
+}: {
+  tables: Array<VerbConjugationTable | NounCaseTable>;
+  keyPrefix: string;
+}) {
+  return (
+    <div className="mt-4 space-y-4">
+      {tables.map((table) => (
+        <div key={`${keyPrefix}-${table.title}`} className="space-y-2">
+          <div className="text-base font-normal text-strong">{table.title}</div>
+          <div className="overflow-hidden rounded-xl border border-subtle bg-surface-elevated">
+            <table className="min-w-full border-collapse text-left">
+              <tbody>
+                {table.rows.map((row) => (
+                  <tr
+                    key={`${table.title}-${row.label}-${row.form}`}
+                    className="border-t border-subtle first:border-t-0"
+                  >
+                    <th
+                      scope="row"
+                      className="w-1/2 px-4 py-3 text-base font-medium leading-7 text-strong"
+                    >
+                      {row.label}
+                    </th>
+                    <td className="px-4 py-3 text-base leading-7 text-muted">{row.form}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function WordDetailsPanel({
   data,
   isLoadingVerbConjugation,
@@ -24,29 +67,23 @@ export function WordDetailsPanel({
   const quotedPronunciation = pronunciationMatch?.[1]?.trim() || pronunciation;
   const pronunciationExplanation = pronunciationMatch?.[2]?.trim() || '';
   const verbConjugation = data.verbConjugation;
+  const nounCases = data.nounCases;
   const [activeTense, setActiveTense] = useState<VerbConjugationTense>('past');
 
-  const availableTenses = {
-    present: Boolean(verbConjugation?.present.length),
-    past: Boolean(verbConjugation?.past.length),
-    future: Boolean(verbConjugation?.future.length),
-  };
-
-  useEffect(() => {
-    if (!verbConjugation) {
-      return;
-    }
-
-    if (availableTenses[activeTense]) {
-      return;
-    }
-
-    const firstAvailable =
-      TENSE_OPTIONS.find((option) => availableTenses[option.key])?.key ?? 'past';
-    setActiveTense(firstAvailable);
-  }, [activeTense, availableTenses, verbConjugation]);
-
-  const activeTables = verbConjugation?.[activeTense] ?? [];
+  const availableTenses = useMemo(
+    () => ({
+      present: Boolean(verbConjugation?.present.length),
+      past: Boolean(verbConjugation?.past.length),
+      future: Boolean(verbConjugation?.future.length),
+    }),
+    [verbConjugation],
+  );
+  const firstAvailableTense = useMemo(
+    () => TENSE_OPTIONS.find((option) => availableTenses[option.key])?.key ?? 'past',
+    [availableTenses],
+  );
+  const resolvedActiveTense = availableTenses[activeTense] ? activeTense : firstAvailableTense;
+  const activeTables = verbConjugation?.[resolvedActiveTense] ?? [];
   const showGenerateButton = verbConjugation?.coverage === 'basic';
   const visibleTenseOptions = TENSE_OPTIONS.filter((option) => availableTenses[option.key]);
 
@@ -78,6 +115,13 @@ export function WordDetailsPanel({
           </p>
         </section>
 
+        {nounCases ? (
+          <section className="panel-shell px-6 py-5">
+            <div className="word-section-label">Cases</div>
+            <LabeledFormTables tables={nounCases.tables} keyPrefix="cases" />
+          </section>
+        ) : null}
+
         {verbConjugation ? (
           <section className="panel-shell px-6 py-5">
             <div className="flex items-start justify-between gap-4">
@@ -106,7 +150,7 @@ export function WordDetailsPanel({
                 {!showGenerateButton ? (
                   <div className="flex flex-wrap justify-end gap-2">
                     {visibleTenseOptions.map((option) => {
-                      const isActive = activeTense === option.key;
+                      const isActive = resolvedActiveTense === option.key;
 
                       return (
                         <button
@@ -125,35 +169,7 @@ export function WordDetailsPanel({
               </div>
             </div>
 
-            <div className="mt-4 space-y-4">
-              {activeTables.map((table) => (
-                <div key={`${activeTense}-${table.title}`} className="space-y-2">
-                  <div className="text-base font-normal text-strong">
-                    {table.title}
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-subtle bg-surface-elevated">
-                    <table className="min-w-full border-collapse text-left">
-                    <tbody>
-                      {table.rows.map((row) => (
-                        <tr
-                          key={`${table.title}-${row.label}-${row.form}`}
-                          className="border-t border-subtle first:border-t-0"
-                        >
-                          <th
-                            scope="row"
-                            className="w-1/2 px-4 py-3 text-base font-medium leading-7 text-strong"
-                          >
-                            {row.label}
-                          </th>
-                          <td className="px-4 py-3 text-base leading-7 text-muted">{row.form}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <LabeledFormTables tables={activeTables} keyPrefix={resolvedActiveTense} />
           </section>
         ) : null}
       </div>

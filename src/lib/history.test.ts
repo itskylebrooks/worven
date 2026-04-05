@@ -68,6 +68,7 @@ describe('history payload normalization', () => {
     expect(history[0]?.result.mode).toBe('word');
     if (history[0]?.result.mode === 'word') {
       expect(history[0].result.data.verbConjugation).toBeNull();
+      expect(history[0].result.data.nounCases).toBeNull();
     }
   });
 
@@ -135,6 +136,7 @@ describe('history payload normalization', () => {
         past: [],
         future: [],
       });
+      expect(history[0].result.data.nounCases).toBeNull();
     }
   });
 });

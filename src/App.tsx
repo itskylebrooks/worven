@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Eraser, Languages, LoaderCircle } from 'lucide-react';
+import { ArrowRightLeft, Eraser, Languages } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatedCopyButton } from './components/AnimatedCopyButton';
 import { Header } from './components/Header';
@@ -597,11 +597,7 @@ export default function App() {
                     aria-label={isLoading ? 'Translating' : 'Translate'}
                     title={isLoading ? 'Translating' : 'Translate'}
                   >
-                    {isLoading ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Languages className="h-4 w-4" />
-                    )}
+                    <Languages className="h-4 w-4" />
                   </button>
                 </div>
               </div>

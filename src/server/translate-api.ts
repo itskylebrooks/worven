@@ -1,6 +1,8 @@
 import { parseJsonObject } from '../lib/json.js';
 import { buildTranslationPrompts } from '../lib/prompts.js';
 import type {
+  NounCaseData,
+  NounCaseTable,
   ProviderId,
   SentenceTranslationPayload,
   TranslationRequest,
@@ -184,6 +186,7 @@ function ensureShape(
         'verbConjugation' in wordPayload ? wordPayload.verbConjugation : null,
         'basic',
       ),
+      nounCases: normalizeNounCases('nounCases' in wordPayload ? wordPayload.nounCases : null),
       examples,
     };
   }
@@ -255,6 +258,20 @@ function normalizeVerbConjugation(
   };
 }
 
+function normalizeNounCases(value: unknown): NounCaseData | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const tables = normalizeNounCaseTables((value as { tables?: unknown }).tables);
+
+  if (tables.length === 0) {
+    return null;
+  }
+
+  return { tables };
+}
+
 function normalizeVerbConjugationTables(value: unknown): VerbConjugationTable[] {
   if (!Array.isArray(value)) {
     return [];
@@ -266,7 +283,39 @@ function normalizeVerbConjugationTables(value: unknown): VerbConjugationTable[] 
     .slice(0, 4);
 }
 
+function normalizeNounCaseTables(value: unknown): NounCaseTable[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((table) => normalizeNounCaseTable(table))
+    .filter((table): table is NounCaseTable => table !== null)
+    .slice(0, 3);
+}
+
 function normalizeVerbConjugationTable(value: unknown): VerbConjugationTable | null {
+  const normalized = normalizeLabeledFormTable(value, 6);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeNounCaseTable(value: unknown): NounCaseTable | null {
+  const normalized = normalizeLabeledFormTable(value, 8);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeLabeledFormTable(
+  value: unknown,
+  maxRows: number,
+): { title: string; rows: Array<{ label: string; form: string }> } | null {
   if (typeof value !== 'object' || value === null) {
     return null;
   }
@@ -299,8 +348,8 @@ function normalizeVerbConjugationTable(value: unknown): VerbConjugationTable | n
 
       return { label, form };
     })
-    .filter((row): row is VerbConjugationTable['rows'][number] => row !== null)
-    .slice(0, 6);
+    .filter((row): row is Array<{ label: string; form: string }>[number] => row !== null)
+    .slice(0, maxRows);
 
   if (!title || rows.length === 0) {
     return null;

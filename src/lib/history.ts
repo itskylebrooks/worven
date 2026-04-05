@@ -1,4 +1,6 @@
 import type {
+  NounCaseData,
+  NounCaseTable,
   SentenceTranslationPayload,
   TranslationHistoryItem,
   TranslationResult,
@@ -34,6 +36,17 @@ function isVerbConjugationCoverage(value: unknown): value is VerbConjugationCove
   return value === 'basic' || value === 'full';
 }
 
+function isNounCaseTable(value: unknown): value is NounCaseTable {
+  return (
+    isRecord(value) &&
+    typeof value.title === 'string' &&
+    Array.isArray(value.rows) &&
+    value.rows.every(
+      (row) => isRecord(row) && typeof row.label === 'string' && typeof row.form === 'string',
+    )
+  );
+}
+
 function isVerbConjugationData(value: unknown): value is VerbConjugationData {
   return (
     isRecord(value) &&
@@ -45,6 +58,10 @@ function isVerbConjugationData(value: unknown): value is VerbConjugationData {
     Array.isArray(value.future) &&
     value.future.every(isVerbConjugationTable)
   );
+}
+
+function isNounCaseData(value: unknown): value is NounCaseData {
+  return isRecord(value) && Array.isArray(value.tables) && value.tables.every(isNounCaseTable);
 }
 
 function isWordTranslationPayload(value: unknown): value is WordTranslationPayload {
@@ -62,6 +79,9 @@ function isWordTranslationPayload(value: unknown): value is WordTranslationPaylo
       value.verbConjugation === null ||
       isVerbConjugationData(value.verbConjugation) ||
       isVerbConjugationTable(value.verbConjugation)) &&
+    (typeof value.nounCases === 'undefined' ||
+      value.nounCases === null ||
+      isNounCaseData(value.nounCases)) &&
     Array.isArray(value.examples) &&
     value.examples.every(
       (item) =>
@@ -72,10 +92,12 @@ function isWordTranslationPayload(value: unknown): value is WordTranslationPaylo
 
 function normalizeWordTranslationPayload(item: WordTranslationPayload): WordTranslationPayload {
   const verbConjugation = normalizeVerbConjugationData(item.verbConjugation);
+  const nounCases = normalizeNounCaseData(item.nounCases);
 
   return {
     ...item,
     verbConjugation,
+    nounCases,
   };
 }
 
@@ -113,6 +135,14 @@ function normalizeVerbConjugationData(value: unknown): VerbConjugationData | nul
   }
 
   return value;
+}
+
+function normalizeNounCaseData(value: unknown): NounCaseData | null {
+  if (value === null || typeof value === 'undefined' || !isNounCaseData(value)) {
+    return null;
+  }
+
+  return value.tables.length > 0 ? value : null;
 }
 
 function isSentenceTranslationPayload(value: unknown): value is SentenceTranslationPayload {

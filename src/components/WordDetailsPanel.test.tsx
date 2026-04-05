@@ -34,6 +34,7 @@ describe('WordDetailsPanel', () => {
             past: [],
             future: [],
           },
+          nounCases: null,
           examples: [
             { source: 'I go home.', target: 'Ich gehe nach Hause.' },
             { source: 'We go now.', target: 'Wir gehen jetzt.' },
@@ -112,6 +113,7 @@ describe('WordDetailsPanel', () => {
               },
             ],
           },
+          nounCases: null,
           examples: [
             { source: 'I am going.', target: 'Je vais.' },
             { source: 'We went out.', target: 'Nous sommes allés.' },
@@ -153,6 +155,19 @@ describe('WordDetailsPanel', () => {
           },
           pronunciation: 'hows',
           verbConjugation: null,
+          nounCases: {
+            tables: [
+              {
+                title: 'Singular',
+                rows: [
+                  { label: 'Nominative', form: 'das Haus' },
+                  { label: 'Genitive', form: 'des Hauses' },
+                  { label: 'Dative', form: 'dem Haus' },
+                  { label: 'Accusative', form: 'das Haus' },
+                ],
+              },
+            ],
+          },
           examples: [
             { source: 'The house is large.', target: 'Das Haus ist groß.' },
             { source: 'This is my house.', target: 'Das ist mein Haus.' },
@@ -165,5 +180,37 @@ describe('WordDetailsPanel', () => {
     );
 
     expect(screen.queryByText('Verb conjugation')).not.toBeInTheDocument();
+    expect(screen.getByText('Cases')).toBeVisible();
+    expect(screen.getByText('des Hauses')).toBeVisible();
+  });
+
+  it('omits the cases card for non-nouns', () => {
+    render(
+      <WordDetailsPanel
+        data={{
+          primary: 'быстро',
+          alternatives: [
+            { term: 'скоро', gloss: 'soon' },
+            { term: 'оперативно', gloss: 'rapidly' },
+            { term: 'поспешно', gloss: 'hastily' },
+          ],
+          grammar: {
+            notes: 'Adverb. Describes speed or manner.',
+          },
+          pronunciation: 'BYS-tra',
+          verbConjugation: null,
+          nounCases: null,
+          examples: [
+            { source: 'He ran quickly.', target: 'Он быстро побежал.' },
+            { source: 'Speak quickly.', target: 'Говори быстро.' },
+            { source: 'It ended quickly.', target: 'Это быстро закончилось.' },
+          ],
+        }}
+        isLoadingVerbConjugation={false}
+        onGenerateVerbConjugation={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('Cases')).not.toBeInTheDocument();
   });
 });

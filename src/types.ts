@@ -41,6 +41,20 @@ export interface VerbConjugationData {
   future: VerbConjugationTable[];
 }
 
+export interface NounCaseRow {
+  label: string;
+  form: string;
+}
+
+export interface NounCaseTable {
+  title: string;
+  rows: NounCaseRow[];
+}
+
+export interface NounCaseData {
+  tables: NounCaseTable[];
+}
+
 export interface VerbConjugationExpansionPayload {
   verbConjugation: VerbConjugationData | null;
 }
@@ -53,6 +67,7 @@ export interface WordTranslationPayload {
   };
   pronunciation: string;
   verbConjugation: VerbConjugationData | null;
+  nounCases: NounCaseData | null;
   examples: WordUsageExample[];
 }
 

@@ -83,6 +83,58 @@ function buildVerbConjugationSchema(focusLanguage: string, coverage: 'basic' | '
   };
 }
 
+function buildNounCaseTableSchema(focusLanguage: string): JsonSchema {
+  return {
+    type: 'object',
+    properties: {
+      title: {
+        type: 'string',
+        description:
+          'Short label for the noun-case set, such as "Singular", "Plural", or "With article".',
+      },
+      rows: {
+        type: 'array',
+        description:
+          'Learner-useful noun-case rows. Each row should pair a grammatical case label with the corresponding form, article-plus-form, or ending pattern.',
+        items: {
+          type: 'object',
+          properties: {
+            label: {
+              type: 'string',
+              description: 'Short case label such as nominative, genitive, dative, or accusative.',
+            },
+            form: {
+              type: 'string',
+              description: `Case form, article-plus-form, or ending pattern in ${focusLanguage}.`,
+            },
+          },
+          required: ['label', 'form'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['title', 'rows'],
+    additionalProperties: false,
+  };
+}
+
+function buildNounCasesSchema(focusLanguage: string): JsonSchema {
+  return {
+    type: ['object', 'null'],
+    description: `Noun-case or declension details for the focus lexical item in ${focusLanguage}. Return null when the focus lexical item is not a noun or when case tables are not relevant for the language.`,
+    properties: {
+      tables: {
+        type: 'array',
+        description:
+          'One to three learner-useful noun-case tables. Use multiple tables when the language distinguishes singular and plural or other common declension groupings.',
+        items: buildNounCaseTableSchema(focusLanguage),
+      },
+    },
+    required: ['tables'],
+    additionalProperties: false,
+  };
+}
+
 function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSchema {
   return {
     type: 'object',
@@ -127,6 +179,7 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
           'Pronunciation guidance for the focus lexical item, written for a speaker of the user native language.',
       },
       verbConjugation: buildVerbConjugationSchema(focusLanguage, 'basic'),
+      nounCases: buildNounCasesSchema(focusLanguage),
       examples: {
         type: 'array',
         description: 'Two or three short usage-example pairs.',
@@ -153,6 +206,7 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
       'grammar',
       'pronunciation',
       'verbConjugation',
+      'nounCases',
       'examples',
     ],
     additionalProperties: false,
@@ -297,6 +351,9 @@ Requirements:
         `Write grammar.notes in ${request.nativeLanguage}, explain meaning and usage clearly, and use double quotes instead of single quotes.`,
         `Pronunciation must refer to the focus lexical item, which should be the foreign-language term being learned, and be written in the user native language/script: ${request.nativeLanguage}.`,
         `For related words, always return the foreign-language term being learned in ${focusLanguage}, with only a short gloss in ${glossLanguage}.`,
+        'If the focus lexical item is a noun and the language uses grammatical cases or productive declension patterns, return learner-useful noun-case tables.',
+        'For German nouns, include the article together with each form when relevant, for example "der Mann" or "dem Mann".',
+        'For Russian and similar highly inflected languages, you may return the full form or the ending pattern, whichever is more useful to the learner.',
       ].join(' '),
       userPrompt: `
 Translate this input in word mode.
@@ -329,6 +386,17 @@ Return exactly this JSON shape:
     "past": [],
     "future": []
   },
+  "nounCases": {
+    "tables": [
+      {
+        "title": "string",
+        "rows": [
+          { "label": "string", "form": "string" },
+          { "label": "string", "form": "string" }
+        ]
+      }
+    ]
+  },
   "examples": [
     { "source": "string", "target": "string" },
     { "source": "string", "target": "string" }
@@ -345,6 +413,10 @@ Requirements:
 - In the default word lookup, include exactly one present-tense table in "verbConjugation.present".
 - In the default word lookup, keep "verbConjugation.past" and "verbConjugation.future" as empty arrays.
 - If the focus lexical item is not a verb, "verbConjugation" must be null.
+- If the focus lexical item is a noun and case information is useful in the language, return "nounCases" with one to three concise tables.
+- For German nouns, include the article in the noun-case forms when relevant.
+- For Russian and similar languages, it is acceptable for noun-case "form" values to be full inflected forms or concise ending patterns.
+- If the focus lexical item is not a noun, or if case tables are not useful for the language, "nounCases" must be null.
 - Keep every conjugated "form" in ${focusLanguage}.
 - Provide exactly 3 alternatives.
 - For each alternative, "term" must be the related word in ${focusLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
