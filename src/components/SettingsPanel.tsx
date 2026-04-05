@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  Download,
   Linkedin,
   Moon,
   Monitor,
@@ -8,10 +9,13 @@ import {
   Sun,
   X,
 } from 'lucide-react';
+import { useState } from 'react';
 import pkg from '../../package.json';
 import { SUPPORTED_LANGUAGES, TRANSLATION_CONTEXTS } from '../constants/languages';
 import { useAnimatedModal } from '../hooks/useAnimatedModal';
+import { usePWA, type PWAInstallMode } from '../hooks/usePWA';
 import { PROVIDER_LABELS, PROVIDER_MODELS } from '../lib/settings';
+import { ConfirmModal } from './ConfirmModal';
 import type { AppSettings, ProviderId } from '../types';
 
 interface SettingsPanelProps {
@@ -56,12 +60,87 @@ function ThemeButton({ active, label, icon, onClick }: ThemeButtonProps) {
   );
 }
 
+function getInstallModalCopy(mode: PWAInstallMode) {
+  switch (mode) {
+    case 'ios-share':
+      return {
+        title: 'Install Worven',
+        message: (
+          <>
+            <p>
+              On iPhone or iPad, open Worven in <strong>Safari</strong>, tap{' '}
+              <strong>Share</strong>, then choose <strong>Add to Home Screen</strong>.
+            </p>
+            <p className="mt-2">
+              If you opened Worven in another iOS browser and do not see that option, switch to
+              Safari first.
+            </p>
+          </>
+        ),
+      };
+    case 'safari-mac':
+      return {
+        title: 'Install Worven',
+        message: (
+          <p>
+            In Safari on macOS, click <strong>Share</strong> and choose{' '}
+            <strong>Add to Dock</strong>.
+          </p>
+        ),
+      };
+    case 'android-manual':
+      return {
+        title: 'Install Worven',
+        message: (
+          <>
+            <p>
+              Install Worven from your browser menu. On Firefox, Opera, or Samsung Internet, look
+              for <strong>Install</strong>, <strong>Add to Home screen</strong>, or a similar menu
+              action.
+            </p>
+            <p className="mt-2">
+              In Chrome or Edge on Android, Worven should usually show the browser install prompt
+              once the page is recognized as installable.
+            </p>
+          </>
+        ),
+      };
+    case 'unsupported':
+      return {
+        title: 'Install Worven',
+        message: (
+          <>
+            <p>
+              Install is not available in this browser right now. Try Chrome, Edge, or Safari.
+            </p>
+            <p className="mt-2">
+              Firefox on desktop does not currently support manifest-installed PWAs, and private or
+              incognito windows can also block installation.
+            </p>
+          </>
+        ),
+      };
+    case 'native-prompt':
+      return {
+        title: 'Install Worven',
+        message: (
+          <p>
+            Worven is ready to install. Use the browser prompt to add it as an app on this device.
+          </p>
+        ),
+      };
+  }
+}
+
 export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPanelProps) {
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const { visible, closing, entering, beginClose } = useAnimatedModal({
     open,
     onClose,
   });
+  const { isInstalled, canInstall, installMode, install, nativePromptAvailable } = usePWA();
   const providerModels = PROVIDER_MODELS[settings.provider];
+  const installCopy = getInstallModalCopy(installMode);
 
   async function handleShare() {
     try {
@@ -102,6 +181,19 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
         [provider]: nextValue,
       },
     });
+  }
+
+  async function handleInstallClick() {
+    if (isInstalled) {
+      return;
+    }
+
+    if (nativePromptAvailable) {
+      await install();
+      return;
+    }
+
+    setInstallHelpOpen(true);
   }
 
   if (!visible) {
@@ -199,6 +291,34 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
           </section>
 
           <div className="border-t border-subtle" />
+
+          {canInstall && (
+            <>
+              <section className="text-sm">
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <div className="col-span-2">
+                    <div className="mb-0.5 text-sm font-semibold">INSTALL APP</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleInstallClick()}
+                    disabled={isInstalled}
+                    aria-disabled={isInstalled}
+                    className={`flex h-10 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-xs font-medium transition-colors ${
+                      isInstalled
+                        ? 'cursor-not-allowed border border-subtle text-muted opacity-60'
+                        : 'bg-accent text-inverse hover:opacity-90'
+                    }`}
+                  >
+                    <Download className="h-4 w-4" />
+                    {isInstalled ? 'Installed' : 'Install'}
+                  </button>
+                </div>
+              </section>
+
+              <div className="border-t border-subtle" />
+            </>
+          )}
 
           <section className="space-y-3 text-sm">
             <div className="grid grid-cols-3 items-center gap-2">
@@ -402,6 +522,12 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
           </div>
         </div>
       </div>
+      <ConfirmModal
+        open={installHelpOpen}
+        onClose={() => setInstallHelpOpen(false)}
+        title={installCopy.title}
+        message={installCopy.message}
+      />
     </div>
   );
 }

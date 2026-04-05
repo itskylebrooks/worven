@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <style>
+    .icon-stroke {
+      stroke: #1c1c1a;
+    }
+
+    .icon-fill {
+      fill: #1c1c1a;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .icon-stroke {
+        stroke: #ffffff;
+      }
+
+      .icon-fill {
+        fill: #ffffff;
+      }
+    }
+  </style>
+  <circle cx="100" cy="100" r="80" fill="none" class="icon-stroke" stroke-width="10"/>
+  <path d="M 56 64 C 86 64 114 136 144 136" fill="none" class="icon-stroke" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 144 64 C 114 64 86 136 56 136" fill="none" class="icon-stroke" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="56" cy="64" r="7" class="icon-fill"/>
+  <circle cx="144" cy="136" r="7" class="icon-fill"/>
+  <circle cx="144" cy="64" r="7" class="icon-fill"/>
+  <circle cx="56" cy="136" r="7" class="icon-fill"/>
+</svg>
