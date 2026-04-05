@@ -5,15 +5,17 @@ import { useAnimatedModal } from '../hooks/useAnimatedModal';
 interface ConfirmModalProps {
   open: boolean;
   onClose: () => void;
+  onConfirm?: () => void;
   title: string;
   message: ReactNode;
-  confirmLabel?: string;
-  cancelLabel?: string;
+  confirmLabel?: string | null;
+  cancelLabel?: string | null;
 }
 
 export function ConfirmModal({
   open,
   onClose,
+  onConfirm,
   title,
   message,
   confirmLabel = 'OK',
@@ -26,6 +28,15 @@ export function ConfirmModal({
 
   if (!visible) {
     return null;
+  }
+
+  function handleConfirm() {
+    if (onConfirm) {
+      onConfirm();
+      return;
+    }
+
+    beginClose();
   }
 
   return createPortal(
@@ -53,20 +64,24 @@ export function ConfirmModal({
         <div className="mt-2 text-sm text-muted">{message}</div>
 
         <div className="mt-5 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-md border border-subtle px-3 py-2 text-sm font-medium bg-surface text-strong hover-nonaccent"
-            onClick={beginClose}
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-inverse hover:opacity-90"
-            onClick={beginClose}
-          >
-            {confirmLabel}
-          </button>
+          {cancelLabel ? (
+            <button
+              type="button"
+              className="rounded-md border border-subtle px-3 py-2 text-sm font-medium bg-surface text-strong hover-nonaccent"
+              onClick={beginClose}
+            >
+              {cancelLabel}
+            </button>
+          ) : null}
+          {confirmLabel ? (
+            <button
+              type="button"
+              className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-inverse hover:opacity-90"
+              onClick={handleConfirm}
+            >
+              {confirmLabel}
+            </button>
+          ) : null}
         </div>
       </div>
       <div className="pointer-events-none flex-[6]" />

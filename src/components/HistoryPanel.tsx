@@ -1,5 +1,7 @@
 import { ArrowRight, Trash2, Undo2, X } from 'lucide-react';
+import { useState } from 'react';
 import { useAnimatedModal } from '../hooks/useAnimatedModal';
+import { ConfirmModal } from './ConfirmModal';
 import type { TranslationHistoryItem } from '../types';
 
 interface HistoryPanelProps {
@@ -9,18 +11,6 @@ interface HistoryPanelProps {
   onRestore: (item: TranslationHistoryItem) => void;
   onDelete: (id: string) => void;
   onClear: () => void;
-}
-
-function formatHistoryTimestamp(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
 }
 
 function getHistoryTarget(item: TranslationHistoryItem) {
@@ -44,11 +34,25 @@ export function HistoryPanel({
   onDelete,
   onClear,
 }: HistoryPanelProps) {
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const { visible, closing, entering, beginClose } = useAnimatedModal({
     open,
     onClose,
   });
   const hasItems = items.length > 0;
+
+  function handleClearClick() {
+    if (!hasItems) {
+      return;
+    }
+
+    setClearConfirmOpen(true);
+  }
+
+  function handleClearConfirm() {
+    onClear();
+    setClearConfirmOpen(false);
+  }
 
   if (!visible) {
     return null;
@@ -83,7 +87,7 @@ export function HistoryPanel({
               <div className="flex justify-start">
                 <button
                   type="button"
-                  onClick={onClear}
+                  onClick={handleClearClick}
                   disabled={!hasItems}
                   className="grid h-10 w-10 place-items-center rounded-lg border border-subtle text-muted transition enabled:hover-nonaccent disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Clear history"
@@ -120,7 +124,7 @@ export function HistoryPanel({
         </div>
 
         {hasItems ? (
-          <div className="space-y-3 pt-2">
+          <div className="pt-2">
             {items.map((item) => {
               const targetText = getHistoryTarget(item);
               const displaySourceText = truncateWords(item.sourceText, 3);
@@ -129,16 +133,12 @@ export function HistoryPanel({
               return (
                 <article
                   key={item.id}
-                  className="relative rounded-xl border border-subtle bg-surface px-4 py-4 sm:px-5 sm:pr-32"
+                  className="relative border-t border-subtle px-1 py-4 first:border-t-0 sm:px-0 sm:pr-32"
                 >
-                  <div className="min-w-0 text-xs uppercase tracking-[0.12em] text-soft">
-                    {item.provider} · {item.model} · {item.context}
-                  </div>
-
-                  <div className="mt-2.5 min-w-0 pr-0 sm:pr-24">
-                    <div className="flex min-w-0 items-start gap-2">
+                  <div className="min-w-0 sm:pr-24">
+                    <div className="flex min-w-0 items-start gap-3">
                       <div
-                        className="max-w-[45%] shrink-0 whitespace-pre-wrap break-words text-sm leading-6 text-strong"
+                        className="max-w-[45%] shrink-0 whitespace-pre-wrap break-words text-base leading-7 text-strong"
                       >
                         {displaySourceText}
                       </div>
@@ -148,19 +148,15 @@ export function HistoryPanel({
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="break-words text-sm leading-6 text-muted">
+                        <div className="break-words text-base leading-7 text-muted">
                           {displayTargetText}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-subtle pt-3 sm:mt-2.5 sm:block sm:border-0 sm:pt-0">
-                    <div className="min-w-0 text-xs text-soft">
-                      {formatHistoryTimestamp(item.createdAt)}
-                    </div>
-
-                    <div className="flex items-center gap-2 sm:absolute sm:right-5 sm:top-1/2 sm:-translate-y-1/2">
+                  <div className="mt-3 flex justify-end sm:absolute sm:right-0 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => onRestore(item)}
@@ -193,6 +189,16 @@ export function HistoryPanel({
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={clearConfirmOpen}
+        onClose={() => setClearConfirmOpen(false)}
+        onConfirm={handleClearConfirm}
+        title="Clear history"
+        confirmLabel="Clear"
+        cancelLabel="Cancel"
+        message="Remove all history entries? This cannot be undone."
+      />
     </div>
   );
 }
