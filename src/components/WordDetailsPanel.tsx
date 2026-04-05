@@ -9,8 +9,8 @@ interface WordDetailsPanelProps {
 }
 
 const TENSE_OPTIONS: Array<{ key: VerbConjugationTense; label: string }> = [
-  { key: 'present', label: 'Present' },
   { key: 'past', label: 'Past' },
+  { key: 'present', label: 'Present' },
   { key: 'future', label: 'Future' },
 ];
 
@@ -24,7 +24,7 @@ export function WordDetailsPanel({
   const quotedPronunciation = pronunciationMatch?.[1]?.trim() || pronunciation;
   const pronunciationExplanation = pronunciationMatch?.[2]?.trim() || '';
   const verbConjugation = data.verbConjugation;
-  const [activeTense, setActiveTense] = useState<VerbConjugationTense>('present');
+  const [activeTense, setActiveTense] = useState<VerbConjugationTense>('past');
 
   const availableTenses = {
     present: Boolean(verbConjugation?.present.length),
@@ -42,7 +42,7 @@ export function WordDetailsPanel({
     }
 
     const firstAvailable =
-      TENSE_OPTIONS.find((option) => availableTenses[option.key])?.key ?? 'present';
+      TENSE_OPTIONS.find((option) => availableTenses[option.key])?.key ?? 'past';
     setActiveTense(firstAvailable);
   }, [activeTense, availableTenses, verbConjugation]);
 
@@ -113,7 +113,7 @@ export function WordDetailsPanel({
                           key={option.key}
                           type="button"
                           onClick={() => setActiveTense(option.key)}
-                          className={`conjugation-tab ${isActive ? 'conjugation-tab-active' : ''}`}
+                          className="conjugation-tab"
                           aria-pressed={isActive}
                         >
                           {option.label}
@@ -127,14 +127,12 @@ export function WordDetailsPanel({
 
             <div className="mt-4 space-y-4">
               {activeTables.map((table) => (
-                <div
-                  key={`${activeTense}-${table.title}`}
-                  className="overflow-hidden rounded-xl border border-subtle"
-                >
-                  <div className="border-b border-subtle bg-subtle px-4 py-3 text-sm font-medium uppercase tracking-[0.18em] text-muted">
+                <div key={`${activeTense}-${table.title}`} className="space-y-2">
+                  <div className="text-base font-normal text-strong">
                     {table.title}
                   </div>
-                  <table className="min-w-full border-collapse text-left">
+                  <div className="overflow-hidden rounded-xl border border-subtle bg-surface-elevated">
+                    <table className="min-w-full border-collapse text-left">
                     <tbody>
                       {table.rows.map((row) => (
                         <tr
@@ -143,15 +141,16 @@ export function WordDetailsPanel({
                         >
                           <th
                             scope="row"
-                            className="w-1/2 bg-subtle px-4 py-3 text-sm font-medium text-strong"
+                            className="w-1/2 px-4 py-3 text-base font-medium leading-7 text-strong"
                           >
                             {row.label}
                           </th>
-                          <td className="px-4 py-3 text-sm text-muted">{row.form}</td>
+                          <td className="px-4 py-3 text-base leading-7 text-muted">{row.form}</td>
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
               ))}
             </div>

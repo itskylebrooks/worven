@@ -258,10 +258,10 @@ select,
   }
 
   .conjugation-tab {
-    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-subtle px-4 py-2 text-sm font-medium text-muted transition;
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-subtle px-4 py-2 text-sm font-medium text-muted transition-colors duration-75;
   }
 
-  .conjugation-tab:hover:not(:disabled) {
+  .conjugation-tab:hover:not(:disabled):not([aria-pressed='true']) {
     @apply hover-nonaccent;
   }
 
@@ -269,7 +269,7 @@ select,
     @apply cursor-not-allowed opacity-45;
   }
 
-  .conjugation-tab-active {
+  .conjugation-tab[aria-pressed='true'] {
     @apply border-accent bg-accent text-inverse;
   }
 

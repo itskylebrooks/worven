@@ -123,12 +123,19 @@ describe('WordDetailsPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Past' }));
+    const tenseButtons = screen.getAllByRole('button', { name: /Past|Present|Future/ });
+    expect(tenseButtons.map((button) => button.textContent)).toEqual(['Past', 'Present', 'Future']);
 
     expect(screen.getByRole('button', { name: 'Past' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Passé composé')).toBeVisible();
     expect(screen.getByText('Imparfait')).toBeVisible();
     expect(screen.queryByText('Futur simple')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Future' }));
+
+    expect(screen.getByRole('button', { name: 'Future' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Futur simple')).toBeVisible();
+    expect(screen.queryByText('Passé composé')).not.toBeInTheDocument();
   });
 
   it('omits the verb conjugation card for non-verbs', () => {
