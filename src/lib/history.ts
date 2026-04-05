@@ -2,6 +2,7 @@ import type {
   SentenceTranslationPayload,
   TranslationHistoryItem,
   TranslationResult,
+  VerbConjugationTable,
   WordTranslationPayload,
 } from '../types';
 
@@ -16,24 +17,44 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+function isVerbConjugationTable(value: unknown): value is VerbConjugationTable {
+  return (
+    isRecord(value) &&
+    typeof value.title === 'string' &&
+    Array.isArray(value.rows) &&
+    value.rows.every(
+      (row) => isRecord(row) && typeof row.label === 'string' && typeof row.form === 'string',
+    )
+  );
+}
+
 function isWordTranslationPayload(value: unknown): value is WordTranslationPayload {
   return (
     isRecord(value) &&
     typeof value.primary === 'string' &&
     Array.isArray(value.alternatives) &&
     value.alternatives.every(
-      (item) =>
-        isRecord(item) && typeof item.term === 'string' && typeof item.gloss === 'string',
+      (item) => isRecord(item) && typeof item.term === 'string' && typeof item.gloss === 'string',
     ) &&
     isRecord(value.grammar) &&
     typeof value.grammar.notes === 'string' &&
     typeof value.pronunciation === 'string' &&
+    (typeof value.verbConjugation === 'undefined' ||
+      value.verbConjugation === null ||
+      isVerbConjugationTable(value.verbConjugation)) &&
     Array.isArray(value.examples) &&
     value.examples.every(
       (item) =>
         isRecord(item) && typeof item.source === 'string' && typeof item.target === 'string',
     )
   );
+}
+
+function normalizeWordTranslationPayload(item: WordTranslationPayload): WordTranslationPayload {
+  return {
+    ...item,
+    verbConjugation: item.verbConjugation ?? null,
+  };
 }
 
 function isSentenceTranslationPayload(value: unknown): value is SentenceTranslationPayload {
@@ -74,19 +95,32 @@ function isTranslationHistoryItem(value: unknown): value is TranslationHistoryIt
     typeof value.nativeLanguage === 'string' &&
     typeof value.targetLanguage === 'string' &&
     typeof value.context === 'string' &&
-    (typeof value.sentenceAlternatives === 'undefined' || isStringArray(value.sentenceAlternatives)) &&
+    (typeof value.sentenceAlternatives === 'undefined' ||
+      isStringArray(value.sentenceAlternatives)) &&
     (value.directionMode === 'source_to_target' || value.directionMode === 'target_to_native') &&
     isTranslationResult(value.result)
   );
 }
 
 function normalizeHistoryItem(item: TranslationHistoryItem): TranslationHistoryItem {
+  const normalizedResult =
+    item.result.mode === 'word'
+      ? {
+          ...item.result,
+          data: normalizeWordTranslationPayload(item.result.data),
+        }
+      : item.result;
+
   if (Array.isArray(item.sentenceAlternatives)) {
-    return item;
+    return {
+      ...item,
+      result: normalizedResult,
+    };
   }
 
   return {
     ...item,
+    result: normalizedResult,
     sentenceAlternatives:
       item.result.mode === 'sentence' && item.result.data.alternative
         ? [item.result.data.alternative]

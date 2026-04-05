@@ -3,8 +3,7 @@ import type { TranslationContext, TranslationRequest } from '../types.js';
 type JsonSchema = Record<string, unknown>;
 
 const CONTEXT_INSTRUCTIONS: Record<TranslationContext, string> = {
-  General:
-    'Use a neutral, broadly applicable translation that sounds natural in everyday usage.',
+  General: 'Use a neutral, broadly applicable translation that sounds natural in everyday usage.',
   Formal:
     'Use a polished, professional, and polite register appropriate for business or official communication.',
   Legal:
@@ -51,8 +50,7 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
         properties: {
           notes: {
             type: 'string',
-            description:
-              `Brief linguistic notes for the focus lexical item in ${focusLanguage}, such as part of speech, gender, inflection, or register when relevant.`,
+            description: `Brief linguistic notes for the focus lexical item in ${focusLanguage}, such as part of speech, gender, inflection, or register when relevant.`,
           },
         },
         required: ['notes'],
@@ -62,6 +60,39 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
         type: 'string',
         description:
           'Pronunciation guidance for the focus lexical item, written for a speaker of the user native language.',
+      },
+      verbConjugation: {
+        type: ['object', 'null'],
+        description: `Verb conjugation details for the focus lexical item in ${focusLanguage}. Return null when the focus lexical item is not a verb.`,
+        properties: {
+          title: {
+            type: 'string',
+            description:
+              'Short label for the conjugation set, such as "Present indicative" or "Common forms".',
+          },
+          rows: {
+            type: 'array',
+            description:
+              'Three to six learner-useful conjugation rows. Each row should pair a person, pronoun, or grammatical label with the conjugated form.',
+            items: {
+              type: 'object',
+              properties: {
+                label: {
+                  type: 'string',
+                  description: 'Short pronoun or grammatical label for the row.',
+                },
+                form: {
+                  type: 'string',
+                  description: `Conjugated verb form in ${focusLanguage}.`,
+                },
+              },
+              required: ['label', 'form'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['title', 'rows'],
+        additionalProperties: false,
       },
       examples: {
         type: 'array',
@@ -83,7 +114,14 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
         },
       },
     },
-    required: ['primary', 'alternatives', 'grammar', 'pronunciation', 'examples'],
+    required: [
+      'primary',
+      'alternatives',
+      'grammar',
+      'pronunciation',
+      'verbConjugation',
+      'examples',
+    ],
     additionalProperties: false,
   };
 }
@@ -98,8 +136,7 @@ function buildSentenceSchema(): JsonSchema {
       },
       alternative: {
         type: ['string', 'null'],
-        description:
-          'A clearly different alternative rendering when requested, otherwise null.',
+        description: 'A clearly different alternative rendering when requested, otherwise null.',
       },
     },
     required: ['translation', 'alternative'],
@@ -158,6 +195,13 @@ Return exactly this JSON shape:
   ],
   "grammar": { "notes": "string" },
   "pronunciation": "string",
+  "verbConjugation": {
+    "title": "string",
+    "rows": [
+      { "label": "string", "form": "string" },
+      { "label": "string", "form": "string" }
+    ]
+  },
   "examples": [
     { "source": "string", "target": "string" },
     { "source": "string", "target": "string" }
@@ -170,6 +214,9 @@ Requirements:
 - If detailFocus is "target", explain the translated target-language word or phrase.
 - If detailFocus is "source", explain the source-language word or phrase the user entered.
 - "pronunciation" must always be for the focus lexical item in the foreign language, not for the user's native-language translation.
+- If the focus lexical item is a verb, return a useful learner-facing conjugation table in "verbConjugation" with 3 to 6 rows and a short title.
+- If the focus lexical item is not a verb, "verbConjugation" must be null.
+- Keep every "form" in ${focusLanguage}.
 - Provide exactly 3 alternatives.
 - For each alternative, "term" must be the related word in ${focusLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
 - If detailFocus is "source", do not return native-language related words as terms. Keep the terms in ${focusLanguage}.

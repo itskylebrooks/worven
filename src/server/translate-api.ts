@@ -4,6 +4,7 @@ import type {
   ProviderId,
   SentenceTranslationPayload,
   TranslationRequest,
+  VerbConjugationTable,
   WordTranslationPayload,
 } from '../types.js';
 
@@ -144,8 +145,9 @@ function ensureShape(
       .concat(primarySplit.fallbackAlternatives.map((term) => ({ term, gloss: '' })))
       .filter(
         (item, index, items) =>
-          items.findIndex((candidate) => candidate.term.toLowerCase() === item.term.toLowerCase()) ===
-          index,
+          items.findIndex(
+            (candidate) => candidate.term.toLowerCase() === item.term.toLowerCase(),
+          ) === index,
       )
       .slice(0, 3);
 
@@ -164,6 +166,9 @@ function ensureShape(
       alternatives,
       grammar: { notes: normalizeNoteQuotes(wordPayload.grammar.notes) },
       pronunciation: wordPayload.pronunciation,
+      verbConjugation: normalizeVerbConjugation(
+        'verbConjugation' in wordPayload ? wordPayload.verbConjugation : null,
+      ),
       examples,
     };
   }
@@ -177,6 +182,53 @@ function ensureShape(
   }
 
   return sentencePayload;
+}
+
+function normalizeVerbConjugation(value: unknown): VerbConjugationTable | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const title =
+    typeof (value as { title?: unknown }).title === 'string'
+      ? (value as { title: string }).title.trim()
+      : '';
+  const rawRows = Array.isArray((value as { rows?: unknown[] }).rows)
+    ? ((value as { rows: unknown[] }).rows ?? [])
+    : [];
+
+  const rows = rawRows
+    .map((row) => {
+      if (typeof row !== 'object' || row === null) {
+        return null;
+      }
+
+      const label =
+        typeof (row as { label?: unknown }).label === 'string'
+          ? (row as { label: string }).label.trim()
+          : '';
+      const form =
+        typeof (row as { form?: unknown }).form === 'string'
+          ? (row as { form: string }).form.trim()
+          : '';
+
+      if (!label || !form) {
+        return null;
+      }
+
+      return { label, form };
+    })
+    .filter((row): row is VerbConjugationTable['rows'][number] => row !== null)
+    .slice(0, 6);
+
+  if (!title || rows.length === 0) {
+    return null;
+  }
+
+  return {
+    title,
+    rows,
+  };
 }
 
 function normalizeNoteQuotes(notes: string) {

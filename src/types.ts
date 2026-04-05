@@ -21,6 +21,16 @@ export interface WordAlternative {
   gloss: string;
 }
 
+export interface VerbConjugationRow {
+  label: string;
+  form: string;
+}
+
+export interface VerbConjugationTable {
+  title: string;
+  rows: VerbConjugationRow[];
+}
+
 export interface WordTranslationPayload {
   primary: string;
   alternatives: WordAlternative[];
@@ -28,6 +38,7 @@ export interface WordTranslationPayload {
     notes: string;
   };
   pronunciation: string;
+  verbConjugation: VerbConjugationTable | null;
   examples: WordUsageExample[];
 }
 
