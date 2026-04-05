@@ -3,7 +3,6 @@ import type { TranslationContext } from '../types';
 
 interface HeaderProps {
   providerLabel: string;
-  modelLabel: string;
   context: TranslationContext;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
@@ -11,7 +10,6 @@ interface HeaderProps {
 
 export function Header({
   providerLabel,
-  modelLabel,
   context,
   onOpenHistory,
   onOpenSettings,
@@ -28,7 +26,7 @@ export function Header({
         </div>
 
         <div className="absolute left-1/2 hidden -translate-x-1/2 text-sm text-muted md:inline-flex md:items-center">
-          {providerLabel} · {modelLabel} · {context}
+          {providerLabel} · {context}
         </div>
 
         <div className="flex items-center gap-2">

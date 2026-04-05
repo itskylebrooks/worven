@@ -491,7 +491,6 @@ export default function App() {
       <div className="mx-auto max-w-[64rem] px-4 pb-24 sm:pb-6">
         <Header
           providerLabel={PROVIDER_LABELS[settings.provider]}
-          modelLabel={settings.model}
           context={settings.translationContext}
           onOpenHistory={() => setHistoryOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
