@@ -19,6 +19,32 @@ const TENSE_OPTIONS: Array<{ key: VerbConjugationTense; label: string }> = [
   { key: 'future', label: 'Future' },
 ];
 
+function WordRelationList({
+  items,
+  emptyLabel,
+}: {
+  items: WordTranslationPayload['alternatives'];
+  emptyLabel: string;
+}) {
+  if (items.length === 0) {
+    return <p className="mt-3 text-base leading-7 text-muted">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="mt-4">
+      {items.map((item) => (
+        <article
+          key={`${item.term}-${item.gloss}`}
+          className="border-t border-subtle py-4 first:border-t-0 first:pt-0 last:pb-0"
+        >
+          <div className="word-alt-target">{item.term}</div>
+          <div className="word-alt-source">{item.gloss}</div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function LabeledFormTables({
   tables,
   keyPrefix,
@@ -177,22 +203,17 @@ export function WordDetailsPanel({
       <div className="grid self-start gap-4">
         <section className="panel-shell px-6 py-5">
           <div className="word-section-label">Related words</div>
-          <div className="mt-4">
-            {data.alternatives.map((item) => (
-              <article
-                key={`${item.term}-${item.gloss}`}
-                className="border-t border-subtle py-4 first:border-t-0 first:pt-0 last:pb-0"
-              >
-                <div className="word-alt-target">{item.term}</div>
-                <div className="word-alt-source">{item.gloss}</div>
-              </article>
-            ))}
-          </div>
+          <WordRelationList items={data.alternatives} emptyLabel="No related words listed." />
         </section>
 
         <section className="panel-shell px-6 py-5">
-          <div className="word-section-label">Notes</div>
-          <p className="mt-3 text-base leading-7 text-muted">{data.grammar.notes}</p>
+          <div className="word-section-label">Etymology</div>
+          <p className="mt-3 text-base leading-7 text-muted">{data.etymology}</p>
+        </section>
+
+        <section className="panel-shell px-6 py-5">
+          <div className="word-section-label">Antonyms</div>
+          <WordRelationList items={data.antonyms} emptyLabel="No common antonyms listed." />
         </section>
       </div>
     </section>

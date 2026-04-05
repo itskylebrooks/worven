@@ -275,10 +275,20 @@ function ensureShape(
 
   if (request.mode === 'word') {
     const wordPayload = payload as WordTranslationPayload;
+    const legacyGrammar = 'grammar' in wordPayload ? wordPayload.grammar : null;
+    const etymology =
+      typeof wordPayload.etymology === 'string'
+        ? wordPayload.etymology
+        : typeof legacyGrammar === 'object' &&
+            legacyGrammar !== null &&
+            typeof (legacyGrammar as { notes?: unknown }).notes === 'string'
+          ? (legacyGrammar as { notes: string }).notes
+          : null;
+
     if (
       typeof wordPayload.primary !== 'string' ||
       !Array.isArray(wordPayload.alternatives) ||
-      typeof wordPayload.grammar?.notes !== 'string' ||
+      typeof etymology !== 'string' ||
       typeof wordPayload.pronunciation !== 'string' ||
       !Array.isArray(wordPayload.examples)
     ) {
@@ -286,53 +296,13 @@ function ensureShape(
     }
 
     const primarySplit = splitPrimaryAndFallbackAlternatives(wordPayload.primary);
-
-    const rawAlternatives = wordPayload.alternatives as unknown[];
-
-    const alternatives = rawAlternatives
-      .map((item) => {
-        if (typeof item === 'string') {
-          return {
-            term: item.trim(),
-            gloss: '',
-          };
-        }
-
-        if (
-          typeof item === 'object' &&
-          item !== null &&
-          typeof (item as { term?: unknown }).term === 'string' &&
-          typeof (item as { gloss?: unknown }).gloss === 'string'
-        ) {
-          return item as WordTranslationPayload['alternatives'][number];
-        }
-
-        if (
-          typeof item === 'object' &&
-          item !== null &&
-          typeof (item as { target?: unknown }).target === 'string' &&
-          typeof (item as { source?: unknown }).source === 'string'
-        ) {
-          return {
-            term: ((item as { target: string }).target || '').trim(),
-            gloss: ((item as { source: string }).source || '').trim(),
-          };
-        }
-
-        return null;
-      })
-      .filter(
-        (item): item is WordTranslationPayload['alternatives'][number] =>
-          item !== null && item.term.trim().length > 0,
-      )
-      .concat(primarySplit.fallbackAlternatives.map((term) => ({ term, gloss: '' })))
-      .filter(
-        (item, index, items) =>
-          items.findIndex(
-            (candidate) => candidate.term.toLowerCase() === item.term.toLowerCase(),
-          ) === index,
-      )
-      .slice(0, 3);
+    const alternatives = normalizeWordRelations(
+      wordPayload.alternatives,
+      primarySplit.fallbackAlternatives,
+    );
+    const antonyms = normalizeWordRelations(
+      'antonyms' in wordPayload ? wordPayload.antonyms : [],
+    );
 
     const examples = wordPayload.examples
       .filter(
@@ -347,7 +317,8 @@ function ensureShape(
     return {
       primary: primarySplit.primary,
       alternatives,
-      grammar: { notes: normalizeNoteQuotes(wordPayload.grammar.notes) },
+      antonyms,
+      etymology: normalizeTextQuotes(etymology),
       pronunciation: wordPayload.pronunciation,
       verbConjugation: normalizeVerbConjugation(
         'verbConjugation' in wordPayload ? wordPayload.verbConjugation : null,
@@ -367,6 +338,57 @@ function ensureShape(
   }
 
   return sentencePayload;
+}
+
+function normalizeWordRelations(
+  value: unknown,
+  fallbackTerms: string[] = [],
+): WordTranslationPayload['alternatives'] {
+  const items = Array.isArray(value) ? value : [];
+
+  return items
+    .map((item) => {
+      if (typeof item === 'string') {
+        return {
+          term: item.trim(),
+          gloss: '',
+        };
+      }
+
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as { term?: unknown }).term === 'string' &&
+        typeof (item as { gloss?: unknown }).gloss === 'string'
+      ) {
+        return item as WordTranslationPayload['alternatives'][number];
+      }
+
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as { target?: unknown }).target === 'string' &&
+        typeof (item as { source?: unknown }).source === 'string'
+      ) {
+        return {
+          term: ((item as { target: string }).target || '').trim(),
+          gloss: ((item as { source: string }).source || '').trim(),
+        };
+      }
+
+      return null;
+    })
+    .filter(
+      (item): item is WordTranslationPayload['alternatives'][number] =>
+        item !== null && item.term.trim().length > 0,
+    )
+    .concat(fallbackTerms.map((term) => ({ term, gloss: '' })))
+    .filter(
+      (item, index, items) =>
+        items.findIndex((candidate) => candidate.term.toLowerCase() === item.term.toLowerCase()) ===
+        index,
+    )
+    .slice(0, 3);
 }
 
 function normalizeVerbConjugation(
@@ -528,8 +550,8 @@ function normalizeLabeledFormTable(
   };
 }
 
-function normalizeNoteQuotes(notes: string) {
-  return notes
+function normalizeTextQuotes(text: string) {
+  return text
     .replace(/[“”]/g, '"')
     .replace(/‘([^’]+)’/g, '"$1"')
     .replace(/'([^']+)'/g, '"$1"')

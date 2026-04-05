@@ -21,6 +21,10 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+function isWordAlternative(value: unknown): value is WordTranslationPayload['alternatives'][number] {
+  return isRecord(value) && typeof value.term === 'string' && typeof value.gloss === 'string';
+}
+
 function isVerbConjugationTable(value: unknown): value is VerbConjugationTable {
   return (
     isRecord(value) &&
@@ -65,15 +69,20 @@ function isNounCaseData(value: unknown): value is NounCaseData {
 }
 
 function isWordTranslationPayload(value: unknown): value is WordTranslationPayload {
+  const legacyGrammar = isRecord(value) && isRecord(value.grammar) ? value.grammar : null;
+  const hasEtymology =
+    isRecord(value) &&
+    (typeof value.etymology === 'string' ||
+      (legacyGrammar !== null && typeof legacyGrammar.notes === 'string'));
+
   return (
     isRecord(value) &&
     typeof value.primary === 'string' &&
     Array.isArray(value.alternatives) &&
-    value.alternatives.every(
-      (item) => isRecord(item) && typeof item.term === 'string' && typeof item.gloss === 'string',
-    ) &&
-    isRecord(value.grammar) &&
-    typeof value.grammar.notes === 'string' &&
+    value.alternatives.every(isWordAlternative) &&
+    (typeof value.antonyms === 'undefined' ||
+      (Array.isArray(value.antonyms) && value.antonyms.every(isWordAlternative))) &&
+    hasEtymology &&
     typeof value.pronunciation === 'string' &&
     (typeof value.verbConjugation === 'undefined' ||
       value.verbConjugation === null ||
@@ -93,9 +102,19 @@ function isWordTranslationPayload(value: unknown): value is WordTranslationPaylo
 function normalizeWordTranslationPayload(item: WordTranslationPayload): WordTranslationPayload {
   const verbConjugation = normalizeVerbConjugationData(item.verbConjugation);
   const nounCases = normalizeNounCaseData(item.nounCases);
+  const legacyGrammar =
+    'grammar' in item && typeof item.grammar === 'object' && item.grammar !== null ? item.grammar : null;
+  const etymology =
+    typeof item.etymology === 'string'
+      ? item.etymology
+      : typeof (legacyGrammar as { notes?: unknown } | null)?.notes === 'string'
+        ? ((legacyGrammar as { notes: string }).notes ?? '')
+        : '';
 
   return {
     ...item,
+    antonyms: Array.isArray(item.antonyms) ? item.antonyms : [],
+    etymology,
     verbConjugation,
     nounCases,
   };

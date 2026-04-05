@@ -67,6 +67,8 @@ describe('history payload normalization', () => {
     expect(history).toHaveLength(1);
     expect(history[0]?.result.mode).toBe('word');
     if (history[0]?.result.mode === 'word') {
+      expect(history[0].result.data.etymology).toBe('Verb.');
+      expect(history[0].result.data.antonyms).toEqual([]);
       expect(history[0].result.data.verbConjugation).toBeNull();
       expect(history[0].result.data.nounCases).toBeNull();
     }
@@ -122,6 +124,8 @@ describe('history payload normalization', () => {
 
     expect(history).toHaveLength(1);
     if (history[0]?.result.mode === 'word') {
+      expect(history[0].result.data.etymology).toBe('Verb.');
+      expect(history[0].result.data.antonyms).toEqual([]);
       expect(history[0].result.data.verbConjugation).toEqual({
         coverage: 'basic',
         present: [

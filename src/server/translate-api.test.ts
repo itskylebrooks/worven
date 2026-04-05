@@ -79,7 +79,8 @@ describe('/api/translate', () => {
                     { term: 'laufen', gloss: 'walk' },
                     { term: 'reisen', gloss: 'travel' },
                   ],
-                  grammar: { notes: 'Verb.' },
+                  antonyms: [{ term: 'bleiben', gloss: 'stay' }],
+                  etymology: 'From Old High German "gangan".',
                   pronunciation: 'gayn',
                   verbConjugation: null,
                   nounCases: null,
@@ -110,6 +111,8 @@ describe('/api/translate', () => {
     expect(res.statusCode).toBe(200);
     expect(res.readJson().result).toMatchObject({
       primary: 'to go',
+      antonyms: [{ term: 'bleiben', gloss: 'stay' }],
+      etymology: 'From Old High German "gangan".',
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.groq.com/openai/v1/chat/completions',

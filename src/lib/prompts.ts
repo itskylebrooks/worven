@@ -162,16 +162,28 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
           additionalProperties: false,
         },
       },
-      grammar: {
-        type: 'object',
-        properties: {
-          notes: {
-            type: 'string',
-            description: `Brief linguistic notes for the focus lexical item in ${focusLanguage}, such as part of speech, gender, inflection, or register when relevant.`,
+      antonyms: {
+        type: 'array',
+        description: `Zero to three useful antonyms in ${focusLanguage}, each with a short gloss in ${glossLanguage}. Return an empty array if no clear antonyms are common for the term.`,
+        items: {
+          type: 'object',
+          properties: {
+            term: {
+              type: 'string',
+              description: `Antonym term in ${focusLanguage}.`,
+            },
+            gloss: {
+              type: 'string',
+              description: `Short gloss or opposite meaning in ${glossLanguage}.`,
+            },
           },
+          required: ['term', 'gloss'],
+          additionalProperties: false,
         },
-        required: ['notes'],
-        additionalProperties: false,
+      },
+      etymology: {
+        type: 'string',
+        description: `A brief etymology for the focus lexical item in ${focusLanguage}, written for a learner in ${glossLanguage}.`,
       },
       pronunciation: {
         type: 'string',
@@ -203,7 +215,8 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
     required: [
       'primary',
       'alternatives',
-      'grammar',
+      'antonyms',
+      'etymology',
       'pronunciation',
       'verbConjugation',
       'nounCases',
@@ -355,10 +368,12 @@ Requirements:
         foreignTermLocationInstruction,
         `Explain and contextualize the foreign-language lexical item in ${foreignLanguage}.`,
         'Return alternatives that are genuinely different common renderings, not tiny rewrites of the same phrase.',
+        'Return antonyms only when they are clear, common opposites for the same sense; otherwise use an empty array.',
         'For languages where dictionary forms commonly include articles or determiners for nouns, include them whenever relevant. For example, German nouns should include "der", "die", or "das".',
-        `Write grammar.notes in ${request.nativeLanguage}, explain the ${foreignLanguage} term clearly, and use double quotes instead of single quotes.`,
+        `Write etymology in ${request.nativeLanguage}, keep it concise, and use double quotes instead of single quotes.`,
         `Pronunciation must always be for the ${foreignLanguage} term being learned, never for the native-language translation, and must be written in the user native language/script: ${request.nativeLanguage}.`,
         `For related words, always return the foreign-language term being learned in ${foreignLanguage}, with only a short gloss in ${glossLanguage}.`,
+        `For antonyms, always return the opposite foreign-language term in ${foreignLanguage}, with only a short gloss in ${glossLanguage}.`,
         `If the foreign-language lexical item is a noun and the language uses grammatical cases or productive declension patterns, return learner-useful noun-case tables in ${foreignLanguage}.`,
         'For German nouns, include the article together with each form when relevant, for example "der Mann" or "dem Mann".',
         'For Russian and similar highly inflected languages, you may return the full form or the ending pattern, whichever is more useful to the learner.',
@@ -380,7 +395,10 @@ Return exactly this JSON shape:
     { "term": "string", "gloss": "string" },
     { "term": "string", "gloss": "string" }
   ],
-  "grammar": { "notes": "string" },
+  "antonyms": [
+    { "term": "string", "gloss": "string" }
+  ],
+  "etymology": "string",
   "pronunciation": "string",
   "verbConjugation": {
     "coverage": "basic",
@@ -430,6 +448,10 @@ Requirements:
 - Keep every conjugated "form" in ${foreignLanguage}.
 - Provide exactly 3 alternatives.
 - For each alternative, "term" must be the related word in ${foreignLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
+- Provide 0 to 3 antonyms.
+- For each antonym, "term" must be the opposite word in ${foreignLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
+- If the term does not have a clear common antonym, return an empty "antonyms" array.
+- "etymology" should briefly explain where the foreign-language term comes from, in ${request.nativeLanguage}.
 - Provide exactly 3 concise source/target example pairs.
 - Keep examples natural, useful, and short.
 `.trim(),

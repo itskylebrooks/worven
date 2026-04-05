@@ -62,9 +62,8 @@ export interface VerbConjugationExpansionPayload {
 export interface WordTranslationPayload {
   primary: string;
   alternatives: WordAlternative[];
-  grammar: {
-    notes: string;
-  };
+  antonyms: WordAlternative[];
+  etymology: string;
   pronunciation: string;
   verbConjugation: VerbConjugationData | null;
   nounCases: NounCaseData | null;

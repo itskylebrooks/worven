@@ -15,9 +15,12 @@ describe('WordDetailsPanel', () => {
             { term: 'fahren', gloss: 'to go by vehicle' },
             { term: 'reisen', gloss: 'to travel' },
           ],
-          grammar: {
-            notes: 'Verb. Often used for movement on foot and for going somewhere in general.',
-          },
+          antonyms: [
+            { term: 'bleiben', gloss: 'to stay' },
+            { term: 'anhalten', gloss: 'to stop' },
+          ],
+          etymology:
+            'From Old High German "gangan", later leveled into the modern verb "gehen".',
           pronunciation: 'GAY-en',
           verbConjugation: {
             coverage: 'basic',
@@ -52,6 +55,9 @@ describe('WordDetailsPanel', () => {
     );
 
     expect(sectionLabels).toEqual(['Usage examples', 'Pronunciation', 'Verb conjugation']);
+    expect(screen.getByText('Etymology')).toBeVisible();
+    expect(screen.getByText('Antonyms')).toBeVisible();
+    expect(screen.getByText('bleiben')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Generate full conjugation' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Present' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Past' })).not.toBeInTheDocument();
@@ -72,9 +78,8 @@ describe('WordDetailsPanel', () => {
             { term: 'partir', gloss: 'to leave' },
             { term: 'voyager', gloss: 'to travel' },
           ],
-          grammar: {
-            notes: 'Verb. Common irregular verb.',
-          },
+          antonyms: [{ term: 'rester', gloss: 'to stay' }],
+          etymology: 'From Latin "ambulare" via Vulgar Latin forms that evolved into French.',
           pronunciation: 'ah-LAY',
           verbConjugation: {
             coverage: 'full',
@@ -150,9 +155,8 @@ describe('WordDetailsPanel', () => {
             { term: 'das Gebäude', gloss: 'building' },
             { term: 'das Heim', gloss: 'home' },
           ],
-          grammar: {
-            notes: 'Noun. Neutral gender. Refers to a house or home depending on context.',
-          },
+          antonyms: [],
+          etymology: 'From Old High German "hus", inherited from Proto-Germanic "*husan".',
           pronunciation: 'hows',
           verbConjugation: null,
           nounCases: {
@@ -182,6 +186,7 @@ describe('WordDetailsPanel', () => {
     expect(screen.queryByText('Verb conjugation')).not.toBeInTheDocument();
     expect(screen.getByText('Cases')).toBeVisible();
     expect(screen.getByText('des Hauses')).toBeVisible();
+    expect(screen.getByText('No common antonyms listed.')).toBeVisible();
   });
 
   it('omits the cases card for non-nouns', () => {
@@ -194,9 +199,9 @@ describe('WordDetailsPanel', () => {
             { term: 'оперативно', gloss: 'rapidly' },
             { term: 'поспешно', gloss: 'hastily' },
           ],
-          grammar: {
-            notes: 'Adverb. Describes speed or manner.',
-          },
+          antonyms: [{ term: 'медленно', gloss: 'slowly' }],
+          etymology:
+            'Built from the adjective "быстрый" with an adverb-forming suffix used in Russian.',
           pronunciation: 'BYS-tra',
           verbConjugation: null,
           nounCases: null,
