@@ -31,7 +31,7 @@ export function OutputPanel({
   onShowAlternative,
 }: OutputPanelProps) {
   return (
-    <section className="panel-shell overflow-hidden">
+    <section className="panel-shell flex h-full flex-col overflow-hidden">
       <div className="border-b border-subtle px-6 py-5 text-center">
         {canChangeLanguage ? (
           <div className="target-language-select-shell">
@@ -90,7 +90,7 @@ export function OutputPanel({
         ) : (
           <>
             <div className="panel-content">
-              <div className="flex h-full min-h-0 flex-col overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 {result.mode === 'word' ? (
                   <div className="translation-scroll-area">
                     <div className="translation-main-text font-medium leading-tight text-strong">

@@ -245,6 +245,14 @@ select,
 }
 
 @layer components {
+  :root {
+    --translator-panel-min-height: 10rem;
+    --translator-panel-max-height: 20rem;
+    --translator-panel-padding-y: 2.5rem;
+    --translator-panel-actions-height: 2.5rem;
+    --translator-panel-actions-gap: 1.25rem;
+  }
+
   .panel-shell {
     @apply rounded-xl border border-subtle bg-surface-elevated shadow-sm;
   }
@@ -287,7 +295,12 @@ select,
   }
 
   .translator-textarea {
-    @apply h-full min-h-0 w-full resize-none border-0 bg-transparent p-0 pb-4 pr-4 leading-tight text-strong outline-none;
+    @apply min-h-0 w-full resize-none border-0 bg-transparent p-0 pb-4 pr-4 leading-tight text-strong outline-none;
+    min-height: 3.5rem;
+    max-height: calc(
+      var(--translator-panel-max-height) - var(--translator-panel-padding-y) -
+        var(--translator-panel-actions-height) - var(--translator-panel-actions-gap)
+    );
   }
 
   .translator-textarea::placeholder {
@@ -307,11 +320,15 @@ select,
   }
 
   .panel-body {
-    @apply flex h-[20rem] min-h-[20rem] flex-col px-6 py-5;
+    @apply flex flex-col overflow-hidden px-6 py-5;
+    flex: 1 1 auto;
+    min-height: var(--translator-panel-min-height);
+    max-height: var(--translator-panel-max-height);
   }
 
   .panel-content {
     @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+    flex: 1 1 auto;
   }
 
   .panel-actions {
@@ -320,6 +337,7 @@ select,
 
   .translation-scroll-area {
     @apply min-h-0 flex-1 overflow-y-auto pb-4 pr-2;
+    flex: 1 1 auto;
   }
 
   .input-field:focus,

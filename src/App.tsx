@@ -1,5 +1,5 @@
 import { ArrowRightLeft, Eraser, Languages, LoaderCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatedCopyButton } from './components/AnimatedCopyButton';
 import { Header } from './components/Header';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -33,6 +33,8 @@ import type {
 } from './types';
 
 const panelAccent = 'panel-shell';
+const INPUT_TEXTAREA_MIN_HEIGHT_PX = 56;
+
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettingsSnapshot());
   const [settingsHydrated, setSettingsHydrated] = useState(false);
@@ -52,6 +54,7 @@ export default function App() {
   const copyTimeoutRef = useRef<number | null>(null);
   const hasLocalSettingsChanges = useRef(false);
   const requestVersionRef = useRef(0);
+  const sourceTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   function createHistoryItemId() {
     return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -106,6 +109,33 @@ export default function App() {
   useEffect(() => {
     applyTheme(settings.themeMode);
   }, [settings.themeMode]);
+
+  const syncSourceTextareaHeight = useCallback(() => {
+    const textarea = sourceTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = '0px';
+    const computedStyle = window.getComputedStyle(textarea);
+    const maxHeight = Number.parseFloat(computedStyle.maxHeight) || textarea.scrollHeight;
+    const nextHeight = Math.max(
+      INPUT_TEXTAREA_MIN_HEIGHT_PX,
+      Math.min(textarea.scrollHeight, maxHeight),
+    );
+
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, []);
+
+  useLayoutEffect(() => {
+    syncSourceTextareaHeight();
+  }, [sourceText, syncSourceTextareaHeight]);
+
+  useEffect(() => {
+    window.addEventListener('resize', syncSourceTextareaHeight);
+    return () => window.removeEventListener('resize', syncSourceTextareaHeight);
+  }, [syncSourceTextareaHeight]);
 
   useEffect(() => {
     let active = true;
@@ -498,7 +528,7 @@ export default function App() {
 
         <main className="mt-4">
           <section className="relative grid gap-4 lg:grid-cols-2">
-            <section className={`${panelAccent} overflow-hidden`}>
+            <section className={`${panelAccent} flex h-full flex-col overflow-hidden`}>
               <div className="border-b border-subtle px-6 py-5 text-center">
                 {directionMode === 'target_to_native' ? (
                   <div className="target-language-select-shell">
@@ -534,6 +564,7 @@ export default function App() {
                 <div className="panel-content">
                   <textarea
                     id="source-text"
+                    ref={sourceTextareaRef}
                     className="translator-textarea translator-textarea-size-default"
                     value={sourceText}
                     onChange={(event) => setSourceText(event.target.value)}
