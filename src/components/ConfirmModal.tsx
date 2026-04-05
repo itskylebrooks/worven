@@ -37,7 +37,7 @@ export function ConfirmModal({
     >
       <div className="pointer-events-none flex-[4] min-h-[40px]" />
       <div
-        className={`relative w-full max-w-sm rounded-2xl border border-subtle bg-surface-elevated p-5 ring-1 ring-black/5 transition-all duration-200 dark:ring-neutral-700/5 ${
+        className={`relative w-full max-w-sm rounded-xl border border-subtle bg-surface-elevated p-5 ring-1 ring-black/5 transition-all duration-200 dark:ring-neutral-700/5 ${
           closing || entering
             ? 'translate-y-1 scale-[0.95] opacity-0'
             : 'translate-y-0 scale-100 opacity-100'

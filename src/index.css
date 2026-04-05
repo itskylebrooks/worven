@@ -246,7 +246,7 @@ select,
 
 @layer components {
   .panel-shell {
-    @apply rounded-2xl border border-subtle bg-surface-elevated shadow-sm;
+    @apply rounded-xl border border-subtle bg-surface-elevated shadow-sm;
   }
 
   .icon-button {

@@ -129,7 +129,7 @@ export function WordDetailsPanel({
               {activeTables.map((table) => (
                 <div
                   key={`${activeTense}-${table.title}`}
-                  className="overflow-hidden rounded-[1.25rem] border border-subtle"
+                  className="overflow-hidden rounded-xl border border-subtle"
                 >
                   <div className="border-b border-subtle bg-subtle px-4 py-3 text-sm font-medium uppercase tracking-[0.18em] text-muted">
                     {table.title}

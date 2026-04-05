@@ -62,7 +62,7 @@ export function HistoryPanel({
       onClick={beginClose}
     >
       <div
-        className={`relative w-full max-w-2xl overflow-y-auto rounded-2xl border border-subtle bg-surface-elevated p-6 pt-3 shadow-elevated ring-1 ring-black/5 transition-all duration-200 dark:ring-neutral-700/5 ${
+        className={`relative w-full max-w-2xl overflow-y-auto rounded-xl border border-subtle bg-surface-elevated p-6 pt-3 shadow-elevated ring-1 ring-black/5 transition-all duration-200 dark:ring-neutral-700/5 ${
           closing || entering
             ? 'translate-y-1 scale-[0.95] opacity-0'
             : 'translate-y-0 scale-100 opacity-100'
@@ -129,7 +129,7 @@ export function HistoryPanel({
               return (
                 <article
                   key={item.id}
-                  className="relative rounded-2xl border border-subtle bg-surface px-4 py-4 sm:px-5 sm:pr-32"
+                  className="relative rounded-xl border border-subtle bg-surface px-4 py-4 sm:px-5 sm:pr-32"
                 >
                   <div className="min-w-0 text-xs uppercase tracking-[0.12em] text-soft">
                     {item.provider} · {item.model} · {item.context}
