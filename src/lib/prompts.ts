@@ -245,10 +245,14 @@ function buildSentenceSchema(): JsonSchema {
 export function buildTranslationPrompts(request: TranslationRequest) {
   const contextInstruction = CONTEXT_INSTRUCTIONS[request.context];
   const detailFocus = request.detailFocus ?? 'target';
-  const focusLanguage =
+  const foreignLanguage =
     detailFocus === 'target'
       ? request.targetLanguage
       : request.sourceLanguageHint || 'the detected source language';
+  const foreignTermLocationInstruction =
+    detailFocus === 'target'
+      ? `The foreign-language term being learned is the translated output in ${foreignLanguage}, not the user's source text.`
+      : `The foreign-language term being learned is the source text in ${foreignLanguage}, not the native-language translation output.`;
   const baseRules = [
     'You are a translation engine.',
     'Auto-detect the source language from the user input.',
@@ -266,13 +270,14 @@ export function buildTranslationPrompts(request: TranslationRequest) {
 
     if (request.requestVerbConjugationExpansion) {
       return {
-        outputSchema: buildVerbConjugationExpansionSchema(focusLanguage),
+        outputSchema: buildVerbConjugationExpansionSchema(foreignLanguage),
         systemPrompt: [
           ...baseRules,
           'Treat the source as a standalone lexical item or very short phrase, not as a full sentence.',
-          `Identify the foreign-language verb being learned in ${focusLanguage}.`,
+          foreignTermLocationInstruction,
+          `Identify the foreign-language verb being learned in ${foreignLanguage}.`,
           'Return only verb conjugation data.',
-          `If the focus lexical item is not a verb, return null for "verbConjugation".`,
+          `If the foreign-language lexical item is not a verb, return null for "verbConjugation".`,
           'This is an explicit expansion request, not a minimal sample.',
           'Do not return only one extra table if the language commonly uses several distinct tense or aspect patterns.',
           'Group the conjugations into present, past, and future.',
@@ -280,7 +285,7 @@ export function buildTranslationPrompts(request: TranslationRequest) {
           'When the language has multiple common present-time forms, include them all in the present bucket, not just the default simple present.',
           'Prefer fuller learner-useful coverage over conservative under-generation.',
           'Use empty arrays for tense buckets that do not naturally apply.',
-          `Keep every conjugated form in ${focusLanguage}.`,
+          `Keep every conjugated form in ${foreignLanguage}.`,
         ].join(' '),
         userPrompt: `
 Expand verb conjugation data for this word lookup.
@@ -289,6 +294,8 @@ Source text: ${request.sourceText}
 Target language: ${request.targetLanguage}
 Translation context: ${request.context}
 User native language: ${request.nativeLanguage}
+Foreign language being learned: ${foreignLanguage}
+Foreign-language term location: ${detailFocus === 'target' ? 'translated output' : 'source text'}
 
 Return exactly this JSON shape:
 {
@@ -325,8 +332,8 @@ Return exactly this JSON shape:
 }
 
 Requirements:
-- Determine the foreign-language focus lexical item from the lookup direction.
-- If the focus lexical item is not a verb, "verbConjugation" must be null.
+- Use the foreign-language term described above, even if it is not in the UI block labeled "Source".
+- If that foreign-language term is not a verb, "verbConjugation" must be null.
 - If it is a verb, "coverage" must be "full".
 - Include all commonly useful present, past, and future conjugation tables for learners.
 - This is a full expansion request, so do not stop after only one or two tables if more common forms exist in the language.
@@ -334,24 +341,25 @@ Requirements:
 - A tense bucket may contain multiple tables when the language distinguishes multiple common forms.
 - For languages with multiple present, past, or future paradigms, include each common paradigm as its own table with a distinct title.
 - If a tense bucket is not applicable, return an empty array for it.
-- Keep labels concise and keep every conjugated form in ${focusLanguage}.
+- Keep labels concise and keep every conjugated form in ${foreignLanguage}.
 `.trim(),
       };
     }
 
     return {
-      outputSchema: buildWordSchema(focusLanguage, glossLanguage),
+      outputSchema: buildWordSchema(foreignLanguage, glossLanguage),
       systemPrompt: [
         ...baseRules,
         'Treat the source as a standalone lexical item or very short phrase, not as a full sentence.',
         'Prefer dictionary-quality translations that a learner could reuse confidently.',
-        `Explain and contextualize the focus lexical item in ${focusLanguage}.`,
+        foreignTermLocationInstruction,
+        `Explain and contextualize the foreign-language lexical item in ${foreignLanguage}.`,
         'Return alternatives that are genuinely different common renderings, not tiny rewrites of the same phrase.',
         'For languages where dictionary forms commonly include articles or determiners for nouns, include them whenever relevant. For example, German nouns should include "der", "die", or "das".',
-        `Write grammar.notes in ${request.nativeLanguage}, explain meaning and usage clearly, and use double quotes instead of single quotes.`,
-        `Pronunciation must refer to the focus lexical item, which should be the foreign-language term being learned, and be written in the user native language/script: ${request.nativeLanguage}.`,
-        `For related words, always return the foreign-language term being learned in ${focusLanguage}, with only a short gloss in ${glossLanguage}.`,
-        'If the focus lexical item is a noun and the language uses grammatical cases or productive declension patterns, return learner-useful noun-case tables.',
+        `Write grammar.notes in ${request.nativeLanguage}, explain the ${foreignLanguage} term clearly, and use double quotes instead of single quotes.`,
+        `Pronunciation must always be for the ${foreignLanguage} term being learned, never for the native-language translation, and must be written in the user native language/script: ${request.nativeLanguage}.`,
+        `For related words, always return the foreign-language term being learned in ${foreignLanguage}, with only a short gloss in ${glossLanguage}.`,
+        `If the foreign-language lexical item is a noun and the language uses grammatical cases or productive declension patterns, return learner-useful noun-case tables in ${foreignLanguage}.`,
         'For German nouns, include the article together with each form when relevant, for example "der Mann" or "dem Mann".',
         'For Russian and similar highly inflected languages, you may return the full form or the ending pattern, whichever is more useful to the learner.',
       ].join(' '),
@@ -362,6 +370,8 @@ Source text: ${request.sourceText}
 Target language: ${request.targetLanguage}
 Translation context: ${request.context}
 User native language for pronunciation: ${request.nativeLanguage}
+Foreign language being learned: ${foreignLanguage}
+Foreign-language term location: ${detailFocus === 'target' ? 'translated output' : 'source text'}
 
 Return exactly this JSON shape:
 {
@@ -405,22 +415,21 @@ Return exactly this JSON shape:
 
 Requirements:
 - "primary" should be the best main translation in the requested target language.
-- If the focus lexical item is a noun in a language like German, include its dictionary article in "primary" and in related-word "term" values when relevant.
-- If detailFocus is "target", explain the translated target-language word or phrase.
-- If detailFocus is "source", explain the source-language word or phrase the user entered.
-- "pronunciation" must always be for the focus lexical item in the foreign language, not for the user's native-language translation.
-- If the focus lexical item is a verb, return "verbConjugation" with "coverage" set to "basic".
+- If the foreign-language term is the translated output, keep all word details anchored to that translated ${foreignLanguage} term.
+- If the foreign-language term is the source text, keep all word details anchored to the source ${foreignLanguage} term the user entered.
+- If the foreign-language term is a noun in a language like German, include its dictionary article in that ${foreignLanguage} term and in related-word "term" values when relevant.
+- "pronunciation" must always be for the foreign-language term in ${foreignLanguage}, never for the native-language translation or whichever UI column is labeled "Source".
+- If the foreign-language term is a verb, return "verbConjugation" with "coverage" set to "basic".
 - In the default word lookup, include exactly one present-tense table in "verbConjugation.present".
 - In the default word lookup, keep "verbConjugation.past" and "verbConjugation.future" as empty arrays.
-- If the focus lexical item is not a verb, "verbConjugation" must be null.
-- If the focus lexical item is a noun and case information is useful in the language, return "nounCases" with one to three concise tables.
+- If the foreign-language term is not a verb, "verbConjugation" must be null.
+- If the foreign-language term is a noun and case information is useful in the language, return "nounCases" with one to three concise tables.
 - For German nouns, include the article in the noun-case forms when relevant.
 - For Russian and similar languages, it is acceptable for noun-case "form" values to be full inflected forms or concise ending patterns.
-- If the focus lexical item is not a noun, or if case tables are not useful for the language, "nounCases" must be null.
-- Keep every conjugated "form" in ${focusLanguage}.
+- If the foreign-language term is not a noun, or if case tables are not useful for the language, "nounCases" must be null.
+- Keep every conjugated "form" in ${foreignLanguage}.
 - Provide exactly 3 alternatives.
-- For each alternative, "term" must be the related word in ${focusLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
-- If detailFocus is "source", do not return native-language related words as terms. Keep the terms in ${focusLanguage}.
+- For each alternative, "term" must be the related word in ${foreignLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
 - Provide exactly 3 concise source/target example pairs.
 - Keep examples natural, useful, and short.
 `.trim(),
