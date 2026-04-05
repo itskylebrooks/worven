@@ -1,191 +1,341 @@
 # Worven
 
-Worven is a minimal translation web app for people who work across multiple languages every day. It combines fast word lookup and paragraph-level translation in one focused interface, so you do not need to bounce between a dictionary and a chat app to get useful results.
+Worven is a React + Vite translation app for bilingual and multilingual day-to-day work. It combines quick word lookup and longer-form passage translation in one interface, then adds learner-focused details for single-word lookups such as pronunciation, related words, antonyms, example usage, noun cases, and verb conjugation tables.
 
-For single words, Worven behaves like a smart dictionary. It returns a primary translation, related alternatives, pronunciation guidance, grammar notes, and short usage examples. For sentences and paragraphs, it uses an LLM to generate a clean translation and can request an alternative phrasing on demand.
+The app runs as a client-side web UI with one shared translation endpoint, `/api/translate`, used in local development, Vite preview, and Vercel deployments.
 
-## Functionality
+## What The App Does
 
-- Translate single words and short phrases with dictionary-style detail.
-- Translate sentences and longer passages in the same interface.
-- Switch translation direction between source-to-target and target-to-native workflows.
-- Use Groq by default without entering an API key, or switch to OpenAI, Anthropic, or Gemini with your own key.
-- Pick the model, target language, native language, and translation tone from Settings.
-- Save translation history locally in the browser and restore previous results.
-- Copy primary translations and alternative sentence renderings with one click.
-- Use light, dark, or system theme modes.
-- Install Worven as a Progressive Web App (PWA) with browser-specific install guidance.
-- Reload the app shell offline after the first visit, while keeping live translation network-only.
+### Translation modes
 
-## Privacy and Storage
+Worven auto-classifies the input:
 
-Worven is built around local-first usage:
+- `word` mode for a single word or very short phrase
+- `sentence` mode for longer text, punctuation-heavy input, or multiline input
 
-- There is no account system.
-- There is no remote database for user data.
-- Groq is the default provider and uses a server-side `GROQ_API_KEY`.
-- Optional OpenAI, Anthropic, and Gemini API keys are still user-provided.
-- Optional user API keys are encrypted in the browser when secure storage is available, using Web Crypto with an IndexedDB-backed key store.
-- App settings and translation history are stored locally in browser storage.
+### Word mode
 
-Current implementation note:
+Word lookups return:
 
-- Translation history is currently stored in `localStorage` and can be cleared from the History panel.
-- The app does not currently include a toggle to disable history entirely.
+- a primary translation
+- 3 related words with short glosses
+- 0 to 3 antonyms when applicable
+- pronunciation guidance
+- a short etymology note
+- 3 short source/target usage examples
+- noun-case tables when useful for the language
+- a basic present-tense verb conjugation table when the item is a verb
 
-## How It Works
+If the word is a verb and the initial lookup only returns basic coverage, the UI can request a full conjugation expansion. Full expansions are grouped into `past`, `present`, and `future`, and each tense bucket can contain multiple tables.
 
-The UI is a React + Vite app. Translation requests are sent to `/api/translate`. In local development, that endpoint is exposed by Vite middleware. In production on Vercel, the same server code runs through `api/translate.ts`. The handler forwards the request to the selected provider, normalizes the response, and returns a consistent shape to the client.
+### Sentence mode
 
-This keeps the project lightweight:
+Sentence and passage translations return:
 
-- no separate backend app
-- no authentication layer
-- no hosted persistence
+- the main translation
+- optional alternative renderings on demand
+
+Alternative renderings are requested separately and appended to the current result/history entry instead of replacing the original translation.
+
+### Direction modes
+
+Worven supports two translation directions:
+
+- `source_to_target`: translate from the typed source text into the selected target language
+- `target_to_native`: treat the selected target language as the language being learned and translate back into the user’s native language
+
+The direction switch affects the prompts sent to providers so pronunciation, related words, conjugations, and noun cases stay anchored to the foreign-language term being learned.
+
+## Settings And UX
+
+The current UI includes:
+
+- provider selection
+- model selection per provider
+- API key input for client-key providers
+- native language selection
+- target language selection
+- translation context selection
+- theme selection: `system`, `light`, `dark`
+- install/share actions in Settings
+- translation history panel with restore/delete/clear actions
+- copy buttons for primary translations and sentence alternatives
+- keyboard shortcuts:
+  - `Enter` submits from the input textarea
+  - `Shift+Enter` inserts a newline
+  - `Escape` clears the current input/output
+
+Default settings for a fresh install:
+
+- provider: `groq`
+- model: `llama-3.3-70b-versatile`
+- native language: `English`
+- target language: `German`
+- translation context: `General`
+- theme: `system`
+
+## Supported Languages
+
+The current language list is:
+
+- English
+- Russian
+- German
+- French
+- Spanish
+- Italian
+- Portuguese
+- Polish
+- Turkish
+- Arabic
+- Chinese (Simplified)
+- Japanese
+- Korean
+- Ukrainian
+- Dutch
+
+## Translation Contexts
+
+The translation-style presets are:
+
+- General
+- Formal
+- Legal
+- Medical
+- Technical
+- Casual
+- Literary
+
+These context values are injected into the prompt sent to the selected model.
+
+## Providers And Models
+
+Worven currently supports 4 providers:
+
+- Groq
+- OpenAI
+- Anthropic
+- Gemini
+
+Current allowed models by provider:
+
+- Groq: `llama-3.3-70b-versatile`, `openai/gpt-oss-20b`, `qwen/qwen3-32b`
+- OpenAI: `gpt-5.4-mini`, `gpt-5.4-nano`
+- Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
+- Gemini: `gemini-2.5-flash`, `gemini-2.5-pro`
+
+Provider behavior:
+
+- Groq uses a server-side `GROQ_API_KEY`
+- OpenAI, Anthropic, and Gemini use user-supplied keys from Settings
+- the server validates both provider IDs and models before making upstream calls
+
+## Privacy And Local Storage
+
+Worven is local-first:
+
+- there is no account system
+- there is no remote user database
+- settings are stored in browser storage
+- translation history is stored in `localStorage`
+- history is capped at 40 items
+- client-provider API keys are encrypted with Web Crypto when the browser supports IndexedDB + `crypto.subtle`
+- the Groq key is never persisted in the browser
+
+Implementation details:
+
+- encrypted keys use AES-GCM
+- the encryption key is stored in IndexedDB
+- if secure storage fails, Worven falls back to saving blank client keys rather than storing the Groq key
+- history restore also restores the saved provider, model, direction mode, languages, and translation context
+
+## API And Runtime Behavior
+
+All translation requests go through `POST /api/translate`.
+
+That endpoint:
+
+- runs through Vite middleware in development and preview
+- runs through [`api/translate.ts`](./api/translate.ts) on Vercel
+- forwards requests to the selected provider
+- builds structured prompts and JSON schemas server-side
+- normalizes provider responses into one consistent response shape
+- rejects unsupported providers/models before any upstream call
+
+Current request handling details:
+
+- `OPTIONS` is supported
+- non-`POST` methods return `405`
+- CORS headers are set to `*`
+- Groq requests are limited to 5,000 characters of source text
+- Groq requests are rate-limited to 20 requests per 5 minutes per IP
+
+## PWA Support
+
+Worven ships as an installable PWA using `vite-plugin-pwa` and Workbox.
+
+Current behavior:
+
+- the app shell can reopen offline after the first successful load
+- static assets are cached for offline reuse
+- `/api/*` is excluded from navigation fallback
+- live translation still requires network access because provider requests are not cached
+- the service worker is registered immediately
+- Worven periodically checks for service-worker updates
+
+Install behavior in the app:
+
+- Chromium browsers use the deferred native install prompt when available
+- iPhone/iPad show Safari “Add to Home Screen” guidance
+- Safari on macOS shows “Add to Dock” guidance
+- Firefox/Opera/Samsung Internet on Android fall back to manual install guidance
+- Firefox desktop is treated as unsupported for PWA install
+
+For real device install testing, local HTTPS is supported through `mkcert`.
 
 ## Tech Stack
 
 - React 18
 - TypeScript
-- Vite
-- Vite PWA Plugin / Workbox
+- Vite 7
 - Tailwind CSS
 - Lucide React
+- Workbox / `vite-plugin-pwa`
+- Vitest + Testing Library
 - ESLint
-- Vitest
 - pnpm
 
 ## Getting Started
 
 ### Requirements
 
-- Node.js 18+ recommended
+- Node.js 18+
 - pnpm 9+
 
-### Install
+### Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### Start the development server
+### Configure environment variables
 
-Create a local env file first:
+Create a local env file:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Set `GROQ_API_KEY` in `.env.local`. Do not prefix it with `VITE_`, because it must stay server-only.
+Set:
 
-If the repo is linked to Vercel, you can also pull Development env vars with:
+```bash
+GROQ_API_KEY=your-groq-key
+```
+
+`GROQ_API_KEY` must stay server-side. Do not prefix it with `VITE_`.
+
+If the project is linked to Vercel, you can also pull development env vars with:
 
 ```bash
 vercel env pull .env.local
 ```
 
-Then start the app:
+### Run the app
 
 ```bash
 pnpm dev
 ```
 
-The app will start in Vite development mode. Open the local URL shown in the terminal and you can translate immediately with Groq. Only add an API key in Settings if you switch to OpenAI, Anthropic, or Gemini.
-
-### Local HTTPS dev for device PWA testing
-
-Real mobile-device install testing works best over trusted local HTTPS:
-
-1. Install mkcert on macOS: `brew install mkcert nss`
-2. Run `mkcert -install`
-3. Generate project certs:
-
-```bash
-pnpm run gen:certs
-```
-
-4. Start Worven with HTTPS enabled:
-
-```bash
-pnpm run dev:https
-```
-
-For LAN/device testing, use:
-
-```bash
-pnpm run dev:https:host
-```
-
-Normal `pnpm dev` and `pnpm dev:host` stay on plain HTTP. HTTPS is opt-in so regular local development does not depend on local TLS certificates.
-
-### Start on your local network
+### Run on your local network
 
 ```bash
 pnpm dev:host
 ```
 
-### Build for production
+### Run local HTTPS
+
+1. Install mkcert on macOS: `brew install mkcert nss`
+2. Run `mkcert -install`
+3. Generate local certs:
+
+```bash
+pnpm run gen:certs
+```
+
+4. Start the HTTPS dev server:
+
+```bash
+pnpm run dev:https
+```
+
+For LAN/device testing over HTTPS:
+
+```bash
+pnpm run dev:https:host
+```
+
+If `WORVEN_DEV_HTTPS=true` is set but the cert files are missing, the Vite config throws and tells you to run `pnpm run gen:certs`.
+
+## Build, Preview, And Quality Checks
+
+Build the app:
 
 ```bash
 pnpm build
 ```
 
-### Preview the production build locally
+Preview the production build locally:
 
 ```bash
 pnpm preview
 ```
 
+Run checks:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm ci
+```
+
 ## Available Scripts
 
-- `pnpm dev` runs the Vite dev server
-- `pnpm dev:host` runs Vite with host exposure enabled
-- `pnpm dev:https` runs the Vite dev server over HTTPS
-- `pnpm dev:https:host` runs the HTTPS dev server with host exposure enabled
-- `pnpm build` runs type-checking and creates a production build
-- `pnpm preview` serves the production build locally
-- `pnpm typecheck` runs TypeScript checks
-- `pnpm lint` runs ESLint
-- `pnpm lint:fix` runs ESLint with autofix
-- `pnpm test` runs Vitest
-- `pnpm test:watch` runs Vitest in watch mode
-- `pnpm format` runs Prettier
-- `pnpm ci` runs lint, typecheck, tests, and build
+- `pnpm dev`: start the Vite dev server
+- `pnpm dev:host`: start Vite with host exposure enabled
+- `pnpm dev:https`: start Vite over HTTPS
+- `pnpm dev:https:host`: start HTTPS Vite with host exposure enabled
+- `pnpm gen:certs`: generate local TLS certs with `mkcert`
+- `pnpm build`: run type checks and build for production
+- `pnpm preview`: preview the production build locally
+- `pnpm typecheck`: run app, node, and API TypeScript checks
+- `pnpm lint`: run ESLint
+- `pnpm lint:fix`: run ESLint with autofix
+- `pnpm test`: run Vitest once
+- `pnpm test:watch`: run Vitest in watch mode
+- `pnpm format`: run Prettier
+- `pnpm ci`: run lint, typecheck, tests, and production build
 
-## Usage
+## Project Structure
 
-1. Open Worven.
-2. Go to Settings.
-3. Leave Groq selected to use the default server-backed model, or choose another provider and paste your API key.
-4. Select your native language, target language, and preferred tone.
-5. Enter a word, sentence, or paragraph.
-6. Press Enter or use the translate button.
+- [`src/App.tsx`](./src/App.tsx): main app state, translation flow, direction switching, history integration
+- [`src/components`](./src/components): UI panels and modal components
+- [`src/lib/prompts.ts`](./src/lib/prompts.ts): prompt and JSON-schema generation
+- [`src/lib/provider-config.ts`](./src/lib/provider-config.ts): provider/model allowlists
+- [`src/lib/settings.ts`](./src/lib/settings.ts): settings defaults, migration, persistence, theme resolution
+- [`src/lib/history.ts`](./src/lib/history.ts): history persistence and legacy-data normalization
+- [`src/lib/secure-storage.ts`](./src/lib/secure-storage.ts): encrypted browser storage for client API keys
+- [`src/server/translate-api.ts`](./src/server/translate-api.ts): shared translation handler used by dev, preview, and Vercel
+- [`api/translate.ts`](./api/translate.ts): Vercel entry point
 
-## Vercel Environment Setup
+## Current Limitations
 
-- Add `GROQ_API_KEY` to your Vercel project environment variables for Production, Preview, and Development.
-- The key is encrypted at rest by Vercel and available to the server function through `process.env.GROQ_API_KEY`.
-- Keep `GROQ_API_KEY` unprefixed. Do not use `VITE_GROQ_API_KEY`, because `VITE_` variables are exposed to the client bundle.
+- translation still depends on live upstream provider APIs
+- history cannot currently be disabled from the UI
+- only the models listed above are accepted
+- the target/native language list is fixed in code
+- there is no authentication or sync across browsers/devices
 
-## PWA Support
+## Status
 
-Worven ships as an installable PWA with an offline app shell. After the first successful load, the UI, settings panel, and locally stored history can reopen offline. Translation requests are still network-dependent because Worven forwards them to live LLM providers through `/api/translate`.
-
-### Browser install notes
-
-| Browser / platform | Install behavior |
-| --- | --- |
-| Chrome / Edge desktop | Native browser install prompt supported |
-| Chrome / Edge Android | Native prompt usually supported once installable |
-| Firefox / Opera / Samsung Internet on Android | Install from the browser menu |
-| Safari on macOS 14+ | Use Share → Add to Dock |
-| Safari on iPhone / iPad | Use Share → Add to Home Screen |
-| Other iOS browsers | Open in Safari if Add to Home Screen is missing |
-| Firefox desktop | PWA install not supported |
-| Private / incognito windows | Install may be unavailable |
-
-Open Settings and use the `Install` action to either trigger the native prompt or show the correct browser-specific guidance for your current environment.
-
-## Project Status
-
-Worven is open source, free to use, and built by Kyle Brooks.
+This repo is currently configured as a private package (`"private": true` in `package.json`).
