@@ -38,6 +38,7 @@ const MAX_GROQ_SOURCE_TEXT_LENGTH = 5000;
 const GROQ_RATE_LIMIT_MAX_REQUESTS = 20;
 const GROQ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const groqRateLimitState = new Map<string, { count: number; resetAt: number }>();
+const GROQ_STRICT_JSON_SCHEMA_MODELS = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
 
 class ApiError extends Error {
   status: number;
@@ -737,6 +738,18 @@ async function callOpenAI(apiKey: string, model: string, request: TranslationReq
 
 async function callGroq(apiKey: string, model: string, request: TranslationRequest) {
   const { systemPrompt, userPrompt, outputSchema } = buildTranslationPrompts(request);
+  const responseFormat = GROQ_STRICT_JSON_SCHEMA_MODELS.has(model)
+    ? {
+        type: 'json_schema',
+        json_schema: {
+          name: getOutputSchemaName(request),
+          strict: true,
+          schema: outputSchema,
+        },
+      }
+    : {
+        type: 'json_object',
+      };
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -755,14 +768,7 @@ async function callGroq(apiKey: string, model: string, request: TranslationReque
           content: userPrompt,
         },
       ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: getOutputSchemaName(request),
-          strict: true,
-          schema: outputSchema,
-        },
-      },
+      response_format: responseFormat,
     }),
   });
 

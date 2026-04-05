@@ -11,7 +11,7 @@ vi.mock('../hooks/usePWA', () => ({
 
 const defaultSettings = {
   provider: 'groq' as const,
-  model: 'openai/gpt-oss-20b',
+  model: 'llama-3.3-70b-versatile',
   apiKeys: {
     groq: '',
     openai: '',

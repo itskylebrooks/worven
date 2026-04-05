@@ -169,6 +169,53 @@ describe('/api/translate', () => {
     });
   });
 
+  it.each(['llama-3.3-70b-versatile', 'qwen/qwen3-32b'])(
+    'uses json_object mode for Groq fallback model %s',
+    async (model) => {
+      vi.stubEnv('GROQ_API_KEY', 'groq-secret');
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    translation: 'Hallo da',
+                    alternative: null,
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const res = createResponse();
+
+      await handleTranslateApi(
+        createRequest({
+          provider: 'groq',
+          model,
+          request: sentenceRequest,
+        }),
+        res,
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.readJson().result).toEqual({
+        translation: 'Hallo da',
+        alternative: null,
+      });
+
+      const requestInit = fetchMock.mock.calls[0]?.[1];
+      const parsedBody = JSON.parse(String(requestInit?.body)) as Record<string, unknown>;
+      expect(parsedBody.response_format).toEqual({
+        type: 'json_object',
+      });
+    },
+  );
+
   it('supports Groq alternative sentence responses', async () => {
     vi.stubEnv('GROQ_API_KEY', 'groq-secret');
     fetchMock.mockResolvedValue(
@@ -211,6 +258,7 @@ describe('/api/translate', () => {
   });
 
   it('fails clearly when the Groq server key is missing', async () => {
+    vi.stubEnv('GROQ_API_KEY', '');
     const res = createResponse();
 
     await handleTranslateApi(

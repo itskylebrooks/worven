@@ -43,7 +43,7 @@ describe('settings provider defaults', () => {
   it('defaults fresh installs to Groq', () => {
     expect(loadSettingsSnapshot()).toMatchObject({
       provider: 'groq',
-      model: 'openai/gpt-oss-20b',
+      model: 'llama-3.3-70b-versatile',
     });
   });
 
@@ -64,7 +64,7 @@ describe('settings provider defaults', () => {
 
     expect(loadSettingsSnapshot()).toMatchObject({
       provider: 'groq',
-      model: 'openai/gpt-oss-20b',
+      model: 'llama-3.3-70b-versatile',
     });
   });
 

@@ -11,7 +11,7 @@ export interface ProviderConfig {
 export const PROVIDER_CONFIGS: Record<ProviderId, ProviderConfig> = {
   groq: {
     label: 'Groq',
-    models: ['openai/gpt-oss-20b'],
+    models: ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'qwen/qwen3-32b'],
     keyMode: 'server',
   },
   openai: {
