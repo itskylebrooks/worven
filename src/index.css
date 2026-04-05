@@ -20,10 +20,10 @@
 
 :root {
   color-scheme: light;
-  --color-app-bg: #fdfdfd;
+  --color-app-bg: #ffffff;
   --color-surface: #ffffff;
   --color-surface-elevated: #fefefe;
-  --color-surface-alt: #f4f4f5;
+  --color-surface-alt: #f6f6f7;
   --color-chip-bg: rgba(17, 24, 39, 0.06);
 
   --color-text-primary: #111827;
@@ -31,8 +31,8 @@
   --color-text-tertiary: #6b7280;
   --color-text-inverse: #ffffff;
 
-  --color-border-subtle: #e3e4e8;
-  --color-border-strong: #d2d4da;
+  --color-border-subtle: #ebedf0;
+  --color-border-strong: #dde1e7;
   --color-border-contrast: #111827;
 
   --accent-light: #0f0f0f;
@@ -90,12 +90,12 @@
 
 @media (min-width: 1024px) {
   :root:not(.dark) {
-    --color-app-bg: #f7f7f8;
-    --color-surface: #fcfcfc;
+    --color-app-bg: #fbfbfc;
+    --color-surface: #fefefe;
     --color-surface-elevated: #ffffff;
-    --color-surface-alt: #efeff1;
-    --color-border-subtle: #dcdee3;
-    --color-border-strong: #cbced6;
+    --color-surface-alt: #f3f4f6;
+    --color-border-subtle: #e6e8ed;
+    --color-border-strong: #d7dbe3;
     --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 56%, #ffffff);
   }
 
