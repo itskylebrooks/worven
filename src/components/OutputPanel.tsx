@@ -1,4 +1,4 @@
-import { Languages, LoaderCircle, RotateCcw, Sparkles } from 'lucide-react';
+import { FileText, LoaderCircle, RotateCcw, Sparkles } from 'lucide-react';
 import { AnimatedCopyButton } from './AnimatedCopyButton';
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import type { TranslationResult } from '../types';
@@ -79,7 +79,7 @@ export function OutputPanel({
             <div className="grid h-full place-items-center text-center">
               <div className="max-w-sm space-y-4">
                 <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-subtle text-accent">
-                  <Languages className="h-7 w-7" />
+                  <FileText className="h-7 w-7" />
                 </div>
                 <div>
                   <p className="text-lg font-medium text-strong">Ready</p>
