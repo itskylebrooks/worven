@@ -88,6 +88,26 @@
   --shadow-hover: 0 14px 28px rgba(2, 6, 23, 0.38);
 }
 
+@media (min-width: 1024px) {
+  :root:not(.dark) {
+    --color-app-bg: #f1f2f4;
+    --color-surface: #e9ebef;
+    --color-surface-elevated: #e5e8ec;
+    --color-surface-alt: #d9dde4;
+    --color-border-subtle: #c6ccd6;
+    --color-border-strong: #b3bbc7;
+    --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 72%, #ffffff);
+  }
+
+  .dark {
+    --color-app-bg: #111315;
+    --color-surface: #14171a;
+    --color-surface-elevated: #191c20;
+    --color-surface-alt: #21252b;
+    --color-subtle-hover: color-mix(in srgb, var(--color-text-primary) 10%, var(--color-app-bg));
+  }
+}
+
 html,
 body,
 #root {
