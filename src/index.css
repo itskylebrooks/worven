@@ -20,10 +20,10 @@
 
 :root {
   color-scheme: light;
-  --color-app-bg: #ffffff;
-  --color-surface: #fcfcfc;
-  --color-surface-elevated: #fbfbfb;
-  --color-surface-alt: #f6f6f7;
+  --color-app-bg: #fdfdfd;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #fefefe;
+  --color-surface-alt: #f4f4f5;
   --color-chip-bg: rgba(17, 24, 39, 0.06);
 
   --color-text-primary: #111827;
@@ -31,8 +31,8 @@
   --color-text-tertiary: #6b7280;
   --color-text-inverse: #ffffff;
 
-  --color-border-subtle: #e5e7eb;
-  --color-border-strong: #d1d5db;
+  --color-border-subtle: #e3e4e8;
+  --color-border-strong: #d2d4da;
   --color-border-contrast: #111827;
 
   --accent-light: #0f0f0f;
@@ -46,7 +46,7 @@
   --color-warning: #f97316;
   --color-success-soft: color-mix(in srgb, var(--color-success) 35%, var(--color-surface));
   --color-danger-soft: color-mix(in srgb, var(--color-danger) 35%, var(--color-surface));
-  --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 60%, #ffffff);
+  --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 52%, #ffffff);
 
   --color-overlay: rgba(17, 24, 39, 0.68);
   --shadow-elevated: 0 12px 24px rgba(15, 23, 42, 0.12);
@@ -55,10 +55,10 @@
 
 .dark {
   color-scheme: dark;
-  --color-app-bg: #050505;
-  --color-surface: #0c0c0e;
-  --color-surface-elevated: #101014;
-  --color-surface-alt: #17171c;
+  --color-app-bg: #070708;
+  --color-surface: #0d0e10;
+  --color-surface-elevated: #111316;
+  --color-surface-alt: #191c20;
   --color-chip-bg: rgba(244, 244, 245, 0.08);
 
   --color-text-primary: #f3f4f6;
@@ -66,8 +66,8 @@
   --color-text-tertiary: #9ca3af;
   --color-text-inverse: #050505;
 
-  --color-border-subtle: rgba(148, 163, 184, 0.26);
-  --color-border-strong: rgba(148, 163, 184, 0.4);
+  --color-border-subtle: rgba(167, 172, 184, 0.18);
+  --color-border-strong: rgba(167, 172, 184, 0.28);
   --color-border-contrast: #f9fafb;
 
   --accent-dark: #e5e7eb;
@@ -81,7 +81,7 @@
   --color-warning: #fb923c;
   --color-success-soft: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
   --color-danger-soft: color-mix(in srgb, var(--color-danger) 14%, var(--color-surface));
-  --color-subtle-hover: color-mix(in srgb, var(--color-text-primary) 8%, var(--color-app-bg));
+  --color-subtle-hover: color-mix(in srgb, var(--color-text-primary) 6%, var(--color-app-bg));
 
   --color-overlay: rgba(0, 0, 0, 0.78);
   --shadow-elevated: 0 22px 44px rgba(2, 6, 23, 0.42);
@@ -90,21 +90,21 @@
 
 @media (min-width: 1024px) {
   :root:not(.dark) {
-    --color-app-bg: #f1f2f4;
-    --color-surface: #e9ebef;
-    --color-surface-elevated: #e5e8ec;
-    --color-surface-alt: #d9dde4;
-    --color-border-subtle: #c6ccd6;
-    --color-border-strong: #b3bbc7;
-    --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 72%, #ffffff);
+    --color-app-bg: #f7f7f8;
+    --color-surface: #fcfcfc;
+    --color-surface-elevated: #ffffff;
+    --color-surface-alt: #efeff1;
+    --color-border-subtle: #dcdee3;
+    --color-border-strong: #cbced6;
+    --color-subtle-hover: color-mix(in srgb, var(--color-surface-alt) 56%, #ffffff);
   }
 
   .dark {
-    --color-app-bg: #111315;
-    --color-surface: #14171a;
-    --color-surface-elevated: #191c20;
-    --color-surface-alt: #21252b;
-    --color-subtle-hover: color-mix(in srgb, var(--color-text-primary) 10%, var(--color-app-bg));
+    --color-app-bg: #0f1113;
+    --color-surface: #131619;
+    --color-surface-elevated: #171b1f;
+    --color-surface-alt: #1f2429;
+    --color-subtle-hover: color-mix(in srgb, var(--color-text-primary) 7%, var(--color-app-bg));
   }
 }
 
