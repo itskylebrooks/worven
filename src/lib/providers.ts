@@ -2,10 +2,14 @@ import type {
   ProviderId,
   SentenceTranslationPayload,
   TranslationRequest,
+  VerbConjugationExpansionPayload,
   WordTranslationPayload,
 } from '../types';
 
-type TranslateApiResult = WordTranslationPayload | SentenceTranslationPayload;
+type TranslateApiResult =
+  | WordTranslationPayload
+  | SentenceTranslationPayload
+  | VerbConjugationExpansionPayload;
 
 interface TranslateApiResponse {
   result?: TranslateApiResult;
@@ -19,6 +23,10 @@ function isTranslateApiResult(value: unknown): value is TranslateApiResult {
 
   if ('primary' in value) {
     return typeof value.primary === 'string';
+  }
+
+  if ('verbConjugation' in value) {
+    return true;
   }
 
   return 'translation' in value && typeof value.translation === 'string';
@@ -40,8 +48,32 @@ export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string,
   model: string,
+  request: TranslationRequest & { mode: 'word'; requestVerbConjugationExpansion: true },
+): Promise<VerbConjugationExpansionPayload>;
+export async function translateWithProvider(
+  provider: ProviderId,
+  apiKey: string,
+  model: string,
+  request: TranslationRequest & { mode: 'word' },
+): Promise<WordTranslationPayload>;
+export async function translateWithProvider(
+  provider: ProviderId,
+  apiKey: string,
+  model: string,
+  request: TranslationRequest & { mode: 'sentence' },
+): Promise<SentenceTranslationPayload>;
+export async function translateWithProvider(
+  provider: ProviderId,
+  apiKey: string,
+  model: string,
   request: TranslationRequest,
-) {
+): Promise<TranslateApiResult>;
+export async function translateWithProvider(
+  provider: ProviderId,
+  apiKey: string,
+  model: string,
+  request: TranslationRequest,
+): Promise<TranslateApiResult> {
   const response = await fetch('/api/translate', {
     method: 'POST',
     headers: {

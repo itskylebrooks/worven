@@ -29,6 +29,7 @@ import type {
   TranslationHistoryItem,
   TranslationRequest,
   TranslationResult,
+  VerbConjugationExpansionPayload,
 } from './types';
 
 const panelAccent = 'panel-shell';
@@ -42,6 +43,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAlternative, setIsLoadingAlternative] = useState(false);
+  const [isLoadingVerbConjugation, setIsLoadingVerbConjugation] = useState(false);
   const [historyItems, setHistoryItems] = useState<TranslationHistoryItem[]>(() => loadHistory());
   const [activeHistoryItemId, setActiveHistoryItemId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -82,6 +84,7 @@ export default function App() {
   function resetRequestState() {
     setIsLoading(false);
     setIsLoadingAlternative(false);
+    setIsLoadingVerbConjugation(false);
     setError(null);
   }
 
@@ -160,6 +163,9 @@ export default function App() {
     return () => mediaQuery.removeListener(handleChange);
   }, [settings.themeMode]);
 
+  async function runTranslation(
+    request: TranslationRequest & { mode: 'word'; requestVerbConjugationExpansion: true },
+  ): Promise<VerbConjugationExpansionPayload>;
   async function runTranslation(
     request: TranslationRequest & { mode: 'word' },
   ): Promise<Extract<TranslationResult, { mode: 'word' }>['data']>;
@@ -318,6 +324,89 @@ export default function App() {
     } finally {
       if (requestVersion === requestVersionRef.current) {
         setIsLoadingAlternative(false);
+      }
+    }
+  }
+
+  async function handleVerbConjugationExpand() {
+    if (
+      !result ||
+      result.mode !== 'word' ||
+      !result.data.verbConjugation ||
+      result.data.verbConjugation.coverage === 'full'
+    ) {
+      return;
+    }
+
+    setError(null);
+    setIsLoadingVerbConjugation(true);
+    const requestVersion = ++requestVersionRef.current;
+
+    try {
+      const payload = await runTranslation({
+        sourceText: result.sourceText,
+        targetLanguage:
+          directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage,
+        nativeLanguage: settings.nativeLanguage,
+        context: settings.translationContext,
+        mode: 'word',
+        detailFocus: directionMode === 'source_to_target' ? 'target' : 'source',
+        sourceLanguageHint:
+          directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
+        requestVerbConjugationExpansion: true,
+      });
+
+      if (requestVersion !== requestVersionRef.current) {
+        return;
+      }
+
+      setResult((current) => {
+        if (!current || current.mode !== 'word') {
+          return current;
+        }
+
+        return {
+          ...current,
+          data: {
+            ...current.data,
+            verbConjugation: payload.verbConjugation,
+          },
+        };
+      });
+
+      if (activeHistoryItemId) {
+        setHistoryItems(
+          updateHistoryItem(activeHistoryItemId, (entry) => {
+            if (entry.result.mode !== 'word') {
+              return entry;
+            }
+
+            return {
+              ...entry,
+              result: {
+                ...entry.result,
+                data: {
+                  ...entry.result.data,
+                  verbConjugation: payload.verbConjugation,
+                },
+              },
+            };
+          }),
+        );
+      }
+    } catch (translationError) {
+      if (requestVersion !== requestVersionRef.current) {
+        return;
+      }
+
+      setError(
+        translationError instanceof Error
+          ? translationError.message
+          : 'Could not load full verb conjugation tables.',
+      );
+    } finally {
+      if (requestVersion === requestVersionRef.current) {
+        setIsLoadingVerbConjugation(false);
       }
     }
   }
@@ -543,7 +632,11 @@ export default function App() {
           ) : null}
 
           {result?.mode === 'word' && !isLoading && !error ? (
-            <WordDetailsPanel data={result.data} />
+            <WordDetailsPanel
+              data={result.data}
+              isLoadingVerbConjugation={isLoadingVerbConjugation}
+              onGenerateVerbConjugation={() => void handleVerbConjugationExpand()}
+            />
           ) : null}
         </main>
       </div>

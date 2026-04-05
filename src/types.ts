@@ -31,6 +31,20 @@ export interface VerbConjugationTable {
   rows: VerbConjugationRow[];
 }
 
+export type VerbConjugationCoverage = 'basic' | 'full';
+export type VerbConjugationTense = 'present' | 'past' | 'future';
+
+export interface VerbConjugationData {
+  coverage: VerbConjugationCoverage;
+  present: VerbConjugationTable[];
+  past: VerbConjugationTable[];
+  future: VerbConjugationTable[];
+}
+
+export interface VerbConjugationExpansionPayload {
+  verbConjugation: VerbConjugationData | null;
+}
+
 export interface WordTranslationPayload {
   primary: string;
   alternatives: WordAlternative[];
@@ -38,7 +52,7 @@ export interface WordTranslationPayload {
     notes: string;
   };
   pronunciation: string;
-  verbConjugation: VerbConjugationTable | null;
+  verbConjugation: VerbConjugationData | null;
   examples: WordUsageExample[];
 }
 
@@ -56,6 +70,7 @@ export interface TranslationRequest {
   detailFocus?: 'source' | 'target';
   sourceLanguageHint?: string;
   requestAlternative?: boolean;
+  requestVerbConjugationExpansion?: boolean;
 }
 
 export interface AppSettings {

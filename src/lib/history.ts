@@ -2,6 +2,8 @@ import type {
   SentenceTranslationPayload,
   TranslationHistoryItem,
   TranslationResult,
+  VerbConjugationCoverage,
+  VerbConjugationData,
   VerbConjugationTable,
   WordTranslationPayload,
 } from '../types';
@@ -28,6 +30,23 @@ function isVerbConjugationTable(value: unknown): value is VerbConjugationTable {
   );
 }
 
+function isVerbConjugationCoverage(value: unknown): value is VerbConjugationCoverage {
+  return value === 'basic' || value === 'full';
+}
+
+function isVerbConjugationData(value: unknown): value is VerbConjugationData {
+  return (
+    isRecord(value) &&
+    isVerbConjugationCoverage(value.coverage) &&
+    Array.isArray(value.present) &&
+    value.present.every(isVerbConjugationTable) &&
+    Array.isArray(value.past) &&
+    value.past.every(isVerbConjugationTable) &&
+    Array.isArray(value.future) &&
+    value.future.every(isVerbConjugationTable)
+  );
+}
+
 function isWordTranslationPayload(value: unknown): value is WordTranslationPayload {
   return (
     isRecord(value) &&
@@ -41,6 +60,7 @@ function isWordTranslationPayload(value: unknown): value is WordTranslationPaylo
     typeof value.pronunciation === 'string' &&
     (typeof value.verbConjugation === 'undefined' ||
       value.verbConjugation === null ||
+      isVerbConjugationData(value.verbConjugation) ||
       isVerbConjugationTable(value.verbConjugation)) &&
     Array.isArray(value.examples) &&
     value.examples.every(
@@ -51,10 +71,48 @@ function isWordTranslationPayload(value: unknown): value is WordTranslationPaylo
 }
 
 function normalizeWordTranslationPayload(item: WordTranslationPayload): WordTranslationPayload {
+  const verbConjugation = normalizeVerbConjugationData(item.verbConjugation);
+
   return {
     ...item,
-    verbConjugation: item.verbConjugation ?? null,
+    verbConjugation,
   };
+}
+
+function normalizeVerbConjugationData(value: unknown): VerbConjugationData | null {
+  if (value === null || typeof value === 'undefined') {
+    return null;
+  }
+
+  if (isVerbConjugationTable(value)) {
+    return {
+      coverage: 'basic',
+      present: [value],
+      past: [],
+      future: [],
+    };
+  }
+
+  if (!isVerbConjugationData(value)) {
+    return null;
+  }
+
+  if (value.coverage === 'basic') {
+    return value.present.length > 0
+      ? {
+          coverage: 'basic',
+          present: value.present.slice(0, 1),
+          past: [],
+          future: [],
+        }
+      : null;
+  }
+
+  if (value.present.length === 0 && value.past.length === 0 && value.future.length === 0) {
+    return null;
+  }
+
+  return value;
 }
 
 function isSentenceTranslationPayload(value: unknown): value is SentenceTranslationPayload {

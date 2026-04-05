@@ -237,6 +237,22 @@ select,
     @apply hover-nonaccent;
   }
 
+  .conjugation-tab {
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-subtle px-4 py-2 text-sm font-medium text-muted transition;
+  }
+
+  .conjugation-tab:hover:not(:disabled) {
+    @apply hover-nonaccent;
+  }
+
+  .conjugation-tab:disabled {
+    @apply cursor-not-allowed opacity-45;
+  }
+
+  .conjugation-tab-active {
+    @apply border-accent bg-accent text-inverse;
+  }
+
   .field-label {
     @apply mb-2 block text-xs uppercase tracking-[0.24em] text-muted;
   }

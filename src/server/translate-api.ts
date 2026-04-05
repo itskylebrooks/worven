@@ -4,11 +4,17 @@ import type {
   ProviderId,
   SentenceTranslationPayload,
   TranslationRequest,
+  VerbConjugationCoverage,
+  VerbConjugationData,
+  VerbConjugationExpansionPayload,
   VerbConjugationTable,
   WordTranslationPayload,
 } from '../types.js';
 
-type RawTranslationPayload = WordTranslationPayload | SentenceTranslationPayload;
+type RawTranslationPayload =
+  | WordTranslationPayload
+  | SentenceTranslationPayload
+  | VerbConjugationExpansionPayload;
 
 type TranslateApiInput = {
   provider: ProviderId;
@@ -87,10 +93,18 @@ function pathnameMatches(url: string | undefined, expectedPath: string) {
 }
 
 function ensureShape(
-  mode: TranslationRequest['mode'],
+  request: TranslationRequest,
   payload: RawTranslationPayload,
-): WordTranslationPayload | SentenceTranslationPayload {
-  if (mode === 'word') {
+): RawTranslationPayload {
+  if (request.mode === 'word' && request.requestVerbConjugationExpansion) {
+    const verbPayload = payload as VerbConjugationExpansionPayload;
+
+    return {
+      verbConjugation: normalizeVerbConjugation(verbPayload.verbConjugation, 'full'),
+    };
+  }
+
+  if (request.mode === 'word') {
     const wordPayload = payload as WordTranslationPayload;
     if (
       typeof wordPayload.primary !== 'string' ||
@@ -168,6 +182,7 @@ function ensureShape(
       pronunciation: wordPayload.pronunciation,
       verbConjugation: normalizeVerbConjugation(
         'verbConjugation' in wordPayload ? wordPayload.verbConjugation : null,
+        'basic',
       ),
       examples,
     };
@@ -184,7 +199,74 @@ function ensureShape(
   return sentencePayload;
 }
 
-function normalizeVerbConjugation(value: unknown): VerbConjugationTable | null {
+function normalizeVerbConjugation(
+  value: unknown,
+  coverage: VerbConjugationCoverage,
+): VerbConjugationData | null {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { title?: unknown }).title === 'string' &&
+    Array.isArray((value as { rows?: unknown[] }).rows)
+  ) {
+    const legacyTable = normalizeVerbConjugationTable(value);
+    if (!legacyTable) {
+      return null;
+    }
+
+    return {
+      coverage: 'basic',
+      present: [legacyTable],
+      past: [],
+      future: [],
+    };
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const present = normalizeVerbConjugationTables((value as { present?: unknown }).present);
+  const past = normalizeVerbConjugationTables((value as { past?: unknown }).past);
+  const future = normalizeVerbConjugationTables((value as { future?: unknown }).future);
+
+  if (coverage === 'basic') {
+    if (present.length === 0) {
+      return null;
+    }
+
+    return {
+      coverage: 'basic',
+      present: present.slice(0, 1),
+      past: [],
+      future: [],
+    };
+  }
+
+  if (present.length === 0 && past.length === 0 && future.length === 0) {
+    return null;
+  }
+
+  return {
+    coverage: 'full',
+    present,
+    past,
+    future,
+  };
+}
+
+function normalizeVerbConjugationTables(value: unknown): VerbConjugationTable[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((table) => normalizeVerbConjugationTable(table))
+    .filter((table): table is VerbConjugationTable => table !== null)
+    .slice(0, 4);
+}
+
+function normalizeVerbConjugationTable(value: unknown): VerbConjugationTable | null {
   if (typeof value !== 'object' || value === null) {
     return null;
   }
@@ -196,7 +278,6 @@ function normalizeVerbConjugation(value: unknown): VerbConjugationTable | null {
   const rawRows = Array.isArray((value as { rows?: unknown[] }).rows)
     ? ((value as { rows: unknown[] }).rows ?? [])
     : [];
-
   const rows = rawRows
     .map((row) => {
       if (typeof row !== 'object' || row === null) {
@@ -383,7 +464,9 @@ async function callOpenAI(apiKey: string, model: string, request: TranslationReq
           type: 'json_schema',
           name:
             request.mode === 'word'
-              ? 'word_translation'
+              ? request.requestVerbConjugationExpansion
+                ? 'word_conjugation_expansion'
+                : 'word_translation'
               : request.requestAlternative
                 ? 'sentence_translation_with_alternative'
                 : 'sentence_translation',
@@ -500,7 +583,7 @@ async function translateWithProvider(
       throw new Error(`Unsupported provider: ${String(provider)}`);
   }
 
-  return ensureShape(request.mode, payload);
+  return ensureShape(request, payload);
 }
 
 export async function handleTranslateApi(

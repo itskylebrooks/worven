@@ -1,59 +1,58 @@
-import type { WordTranslationPayload } from '../types';
+import { LoaderCircle, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { VerbConjugationTense, WordTranslationPayload } from '../types';
 
 interface WordDetailsPanelProps {
   data: WordTranslationPayload;
+  isLoadingVerbConjugation: boolean;
+  onGenerateVerbConjugation: () => void;
 }
 
-export function WordDetailsPanel({ data }: WordDetailsPanelProps) {
+const TENSE_OPTIONS: Array<{ key: VerbConjugationTense; label: string }> = [
+  { key: 'present', label: 'Present' },
+  { key: 'past', label: 'Past' },
+  { key: 'future', label: 'Future' },
+];
+
+export function WordDetailsPanel({
+  data,
+  isLoadingVerbConjugation,
+  onGenerateVerbConjugation,
+}: WordDetailsPanelProps) {
   const pronunciation = data.pronunciation.trim();
   const pronunciationMatch = pronunciation.match(/^([^([]+?)(\s*[[()].*)?$/);
   const quotedPronunciation = pronunciationMatch?.[1]?.trim() || pronunciation;
   const pronunciationExplanation = pronunciationMatch?.[2]?.trim() || '';
-  const verbConjugation =
-    data.verbConjugation && data.verbConjugation.rows.length > 0 ? data.verbConjugation : null;
+  const verbConjugation = data.verbConjugation;
+  const [activeTense, setActiveTense] = useState<VerbConjugationTense>('present');
+
+  const availableTenses = {
+    present: Boolean(verbConjugation?.present.length),
+    past: Boolean(verbConjugation?.past.length),
+    future: Boolean(verbConjugation?.future.length),
+  };
+
+  useEffect(() => {
+    if (!verbConjugation) {
+      return;
+    }
+
+    if (availableTenses[activeTense]) {
+      return;
+    }
+
+    const firstAvailable =
+      TENSE_OPTIONS.find((option) => availableTenses[option.key])?.key ?? 'present';
+    setActiveTense(firstAvailable);
+  }, [activeTense, availableTenses, verbConjugation]);
+
+  const activeTables = verbConjugation?.[activeTense] ?? [];
+  const showGenerateButton = verbConjugation?.coverage === 'basic';
+  const visibleTenseOptions = TENSE_OPTIONS.filter((option) => availableTenses[option.key]);
 
   return (
     <section className="mt-4 grid gap-4 lg:grid-cols-2">
       <div className="grid self-start gap-4">
-        <section className="panel-shell px-6 py-5">
-          <div className="word-section-label">Pronunciation</div>
-          <p className="mt-3 text-base leading-7 text-strong">
-            <span>{quotedPronunciation}</span>
-            {pronunciationExplanation ? (
-              <span className="text-muted"> {pronunciationExplanation}</span>
-            ) : null}
-          </p>
-        </section>
-
-        {verbConjugation ? (
-          <section className="panel-shell px-6 py-5">
-            <div className="word-section-label">Verb conjugation</div>
-            <div className="mt-3 text-sm font-medium uppercase tracking-[0.22em] text-muted">
-              {verbConjugation.title}
-            </div>
-            <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-subtle">
-              <table className="min-w-full border-collapse text-left">
-                <tbody>
-                  {verbConjugation.rows.map((row) => (
-                    <tr
-                      key={`${row.label}-${row.form}`}
-                      className="border-t border-subtle first:border-t-0"
-                    >
-                      <th
-                        scope="row"
-                        className="w-1/2 bg-subtle/40 px-4 py-3 text-sm font-medium text-strong"
-                      >
-                        {row.label}
-                      </th>
-                      <td className="px-4 py-3 text-sm text-muted">{row.form}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ) : null}
-
         <section className="panel-shell self-start px-6 py-5">
           <div className="word-section-label">Usage examples</div>
           <div className="mt-4">
@@ -68,6 +67,96 @@ export function WordDetailsPanel({ data }: WordDetailsPanelProps) {
             ))}
           </div>
         </section>
+
+        <section className="panel-shell px-6 py-5">
+          <div className="word-section-label">Pronunciation</div>
+          <p className="mt-3 text-base leading-7 text-strong">
+            <span>{quotedPronunciation}</span>
+            {pronunciationExplanation ? (
+              <span className="text-muted"> {pronunciationExplanation}</span>
+            ) : null}
+          </p>
+        </section>
+
+        {verbConjugation ? (
+          <section className="panel-shell px-6 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="word-section-label">Verb conjugation</div>
+              </div>
+
+              <div className="flex shrink-0 flex-col items-end gap-3">
+                {showGenerateButton ? (
+                  <button
+                    type="button"
+                    onClick={onGenerateVerbConjugation}
+                    disabled={isLoadingVerbConjugation}
+                    className="icon-button"
+                    aria-label="Generate full conjugation"
+                    title="Generate full conjugation"
+                  >
+                    {isLoadingVerbConjugation ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                  </button>
+                ) : null}
+
+                {!showGenerateButton ? (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {visibleTenseOptions.map((option) => {
+                      const isActive = activeTense === option.key;
+
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setActiveTense(option.key)}
+                          className={`conjugation-tab ${isActive ? 'conjugation-tab-active' : ''}`}
+                          aria-pressed={isActive}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {activeTables.map((table) => (
+                <div
+                  key={`${activeTense}-${table.title}`}
+                  className="overflow-hidden rounded-[1.25rem] border border-subtle"
+                >
+                  <div className="border-b border-subtle bg-subtle px-4 py-3 text-sm font-medium uppercase tracking-[0.18em] text-muted">
+                    {table.title}
+                  </div>
+                  <table className="min-w-full border-collapse text-left">
+                    <tbody>
+                      {table.rows.map((row) => (
+                        <tr
+                          key={`${table.title}-${row.label}-${row.form}`}
+                          className="border-t border-subtle first:border-t-0"
+                        >
+                          <th
+                            scope="row"
+                            className="w-1/2 bg-subtle px-4 py-3 text-sm font-medium text-strong"
+                          >
+                            {row.label}
+                          </th>
+                          <td className="px-4 py-3 text-sm text-muted">{row.form}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <div className="grid self-start gap-4">

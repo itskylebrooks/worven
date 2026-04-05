@@ -18,6 +18,71 @@ const CONTEXT_INSTRUCTIONS: Record<TranslationContext, string> = {
     'Favor expressive, stylistically rich wording while preserving the original meaning, imagery, and emotional tone.',
 };
 
+function buildConjugationTableSchema(focusLanguage: string): JsonSchema {
+  return {
+    type: 'object',
+    properties: {
+      title: {
+        type: 'string',
+        description:
+          'Short label for the conjugation set, such as "Present indicative" or "Simple future".',
+      },
+      rows: {
+        type: 'array',
+        description:
+          'Three to six learner-useful conjugation rows. Each row should pair a person, pronoun, or grammatical label with the conjugated form.',
+        items: {
+          type: 'object',
+          properties: {
+            label: {
+              type: 'string',
+              description: 'Short pronoun or grammatical label for the row.',
+            },
+            form: {
+              type: 'string',
+              description: `Conjugated verb form in ${focusLanguage}.`,
+            },
+          },
+          required: ['label', 'form'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['title', 'rows'],
+    additionalProperties: false,
+  };
+}
+
+function buildVerbConjugationSchema(focusLanguage: string, coverage: 'basic' | 'full'): JsonSchema {
+  return {
+    type: ['object', 'null'],
+    description: `Verb conjugation details for the focus lexical item in ${focusLanguage}. Return null when the focus lexical item is not a verb.`,
+    properties: {
+      coverage: {
+        type: 'string',
+        enum: [coverage],
+      },
+      present: {
+        type: 'array',
+        description: 'Present-tense conjugation tables.',
+        items: buildConjugationTableSchema(focusLanguage),
+      },
+      past: {
+        type: 'array',
+        description: 'Past-tense conjugation tables.',
+        items: buildConjugationTableSchema(focusLanguage),
+      },
+      future: {
+        type: 'array',
+        description: 'Future-tense conjugation tables.',
+        items: buildConjugationTableSchema(focusLanguage),
+      },
+    },
+    required: ['coverage', 'present', 'past', 'future'],
+    additionalProperties: false,
+  };
+}
+
 function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSchema {
   return {
     type: 'object',
@@ -61,39 +126,7 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
         description:
           'Pronunciation guidance for the focus lexical item, written for a speaker of the user native language.',
       },
-      verbConjugation: {
-        type: ['object', 'null'],
-        description: `Verb conjugation details for the focus lexical item in ${focusLanguage}. Return null when the focus lexical item is not a verb.`,
-        properties: {
-          title: {
-            type: 'string',
-            description:
-              'Short label for the conjugation set, such as "Present indicative" or "Common forms".',
-          },
-          rows: {
-            type: 'array',
-            description:
-              'Three to six learner-useful conjugation rows. Each row should pair a person, pronoun, or grammatical label with the conjugated form.',
-            items: {
-              type: 'object',
-              properties: {
-                label: {
-                  type: 'string',
-                  description: 'Short pronoun or grammatical label for the row.',
-                },
-                form: {
-                  type: 'string',
-                  description: `Conjugated verb form in ${focusLanguage}.`,
-                },
-              },
-              required: ['label', 'form'],
-              additionalProperties: false,
-            },
-          },
-        },
-        required: ['title', 'rows'],
-        additionalProperties: false,
-      },
+      verbConjugation: buildVerbConjugationSchema(focusLanguage, 'basic'),
       examples: {
         type: 'array',
         description: 'Two or three short usage-example pairs.',
@@ -122,6 +155,17 @@ function buildWordSchema(focusLanguage: string, glossLanguage: string): JsonSche
       'verbConjugation',
       'examples',
     ],
+    additionalProperties: false,
+  };
+}
+
+function buildVerbConjugationExpansionSchema(focusLanguage: string): JsonSchema {
+  return {
+    type: 'object',
+    properties: {
+      verbConjugation: buildVerbConjugationSchema(focusLanguage, 'full'),
+    },
+    required: ['verbConjugation'],
     additionalProperties: false,
   };
 }
@@ -165,6 +209,82 @@ export function buildTranslationPrompts(request: TranslationRequest) {
 
   if (request.mode === 'word') {
     const glossLanguage = request.nativeLanguage;
+
+    if (request.requestVerbConjugationExpansion) {
+      return {
+        outputSchema: buildVerbConjugationExpansionSchema(focusLanguage),
+        systemPrompt: [
+          ...baseRules,
+          'Treat the source as a standalone lexical item or very short phrase, not as a full sentence.',
+          `Identify the foreign-language verb being learned in ${focusLanguage}.`,
+          'Return only verb conjugation data.',
+          `If the focus lexical item is not a verb, return null for "verbConjugation".`,
+          'This is an explicit expansion request, not a minimal sample.',
+          'Do not return only one extra table if the language commonly uses several distinct tense or aspect patterns.',
+          'Group the conjugations into present, past, and future.',
+          'A single tense bucket may contain multiple tables when the language commonly distinguishes multiple forms, such as simple vs. progressive, continuous, perfect, literary vs. colloquial, or auxiliary-based vs. synthetic paradigms.',
+          'When the language has multiple common present-time forms, include them all in the present bucket, not just the default simple present.',
+          'Prefer fuller learner-useful coverage over conservative under-generation.',
+          'Use empty arrays for tense buckets that do not naturally apply.',
+          `Keep every conjugated form in ${focusLanguage}.`,
+        ].join(' '),
+        userPrompt: `
+Expand verb conjugation data for this word lookup.
+
+Source text: ${request.sourceText}
+Target language: ${request.targetLanguage}
+Translation context: ${request.context}
+User native language: ${request.nativeLanguage}
+
+Return exactly this JSON shape:
+{
+  "verbConjugation": {
+    "coverage": "full",
+    "present": [
+      {
+        "title": "string",
+        "rows": [
+          { "label": "string", "form": "string" },
+          { "label": "string", "form": "string" }
+        ]
+      }
+    ],
+    "past": [
+      {
+        "title": "string",
+        "rows": [
+          { "label": "string", "form": "string" },
+          { "label": "string", "form": "string" }
+        ]
+      }
+    ],
+    "future": [
+      {
+        "title": "string",
+        "rows": [
+          { "label": "string", "form": "string" },
+          { "label": "string", "form": "string" }
+        ]
+      }
+    ]
+  }
+}
+
+Requirements:
+- Determine the foreign-language focus lexical item from the lookup direction.
+- If the focus lexical item is not a verb, "verbConjugation" must be null.
+- If it is a verb, "coverage" must be "full".
+- Include all commonly useful present, past, and future conjugation tables for learners.
+- This is a full expansion request, so do not stop after only one or two tables if more common forms exist in the language.
+- Include additional present-time forms such as continuous, progressive, habitual, or perfect-present patterns whenever they are common in the language.
+- A tense bucket may contain multiple tables when the language distinguishes multiple common forms.
+- For languages with multiple present, past, or future paradigms, include each common paradigm as its own table with a distinct title.
+- If a tense bucket is not applicable, return an empty array for it.
+- Keep labels concise and keep every conjugated form in ${focusLanguage}.
+`.trim(),
+      };
+    }
+
     return {
       outputSchema: buildWordSchema(focusLanguage, glossLanguage),
       systemPrompt: [
@@ -196,11 +316,18 @@ Return exactly this JSON shape:
   "grammar": { "notes": "string" },
   "pronunciation": "string",
   "verbConjugation": {
-    "title": "string",
-    "rows": [
-      { "label": "string", "form": "string" },
-      { "label": "string", "form": "string" }
-    ]
+    "coverage": "basic",
+    "present": [
+      {
+        "title": "string",
+        "rows": [
+          { "label": "string", "form": "string" },
+          { "label": "string", "form": "string" }
+        ]
+      }
+    ],
+    "past": [],
+    "future": []
   },
   "examples": [
     { "source": "string", "target": "string" },
@@ -214,9 +341,11 @@ Requirements:
 - If detailFocus is "target", explain the translated target-language word or phrase.
 - If detailFocus is "source", explain the source-language word or phrase the user entered.
 - "pronunciation" must always be for the focus lexical item in the foreign language, not for the user's native-language translation.
-- If the focus lexical item is a verb, return a useful learner-facing conjugation table in "verbConjugation" with 3 to 6 rows and a short title.
+- If the focus lexical item is a verb, return "verbConjugation" with "coverage" set to "basic".
+- In the default word lookup, include exactly one present-tense table in "verbConjugation.present".
+- In the default word lookup, keep "verbConjugation.past" and "verbConjugation.future" as empty arrays.
 - If the focus lexical item is not a verb, "verbConjugation" must be null.
-- Keep every "form" in ${focusLanguage}.
+- Keep every conjugated "form" in ${focusLanguage}.
 - Provide exactly 3 alternatives.
 - For each alternative, "term" must be the related word in ${focusLanguage}, and "gloss" must be a short meaning in ${glossLanguage}.
 - If detailFocus is "source", do not return native-language related words as terms. Keep the terms in ${focusLanguage}.

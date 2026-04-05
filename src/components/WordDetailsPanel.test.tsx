@@ -1,10 +1,12 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { WordDetailsPanel } from './WordDetailsPanel';
 
 describe('WordDetailsPanel', () => {
-  it('renders a verb conjugation table when verb data is available', () => {
-    render(
+  it('keeps usage examples at the top left and shows a basic present-tense card by default', () => {
+    const handleGenerate = vi.fn();
+    const { container } = render(
       <WordDetailsPanel
         data={{
           primary: 'gehen',
@@ -18,12 +20,19 @@ describe('WordDetailsPanel', () => {
           },
           pronunciation: 'GAY-en',
           verbConjugation: {
-            title: 'Present indicative',
-            rows: [
-              { label: 'ich', form: 'gehe' },
-              { label: 'du', form: 'gehst' },
-              { label: 'er/sie/es', form: 'geht' },
+            coverage: 'basic',
+            present: [
+              {
+                title: 'Present indicative',
+                rows: [
+                  { label: 'ich', form: 'gehe' },
+                  { label: 'du', form: 'gehst' },
+                  { label: 'er/sie/es', form: 'geht' },
+                ],
+              },
             ],
+            past: [],
+            future: [],
           },
           examples: [
             { source: 'I go home.', target: 'Ich gehe nach Hause.' },
@@ -31,19 +40,95 @@ describe('WordDetailsPanel', () => {
             { source: 'Are you going too?', target: 'Gehst du auch?' },
           ],
         }}
+        isLoadingVerbConjugation={false}
+        onGenerateVerbConjugation={handleGenerate}
       />,
     );
 
-    const conjugationCard = screen.getByText('Verb conjugation').closest('section');
+    const leftColumn = container.querySelectorAll('.grid.self-start.gap-4')[0] as HTMLElement;
+    const sectionLabels = Array.from(leftColumn.querySelectorAll('.word-section-label')).map(
+      (node) => node.textContent?.trim(),
+    );
 
+    expect(sectionLabels).toEqual(['Usage examples', 'Pronunciation', 'Verb conjugation']);
+    expect(screen.getByRole('button', { name: 'Generate full conjugation' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Present' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Past' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Future' })).not.toBeInTheDocument();
     expect(screen.getByText('Present indicative')).toBeVisible();
-    expect(conjugationCard).not.toBeNull();
+    expect(screen.getByText('gehe')).toBeVisible();
+  });
 
-    const scoped = within(conjugationCard as HTMLElement);
-    expect(scoped.getByRole('table')).toBeVisible();
-    expect(scoped.getByText('ich')).toBeVisible();
-    expect(scoped.getByText('gehe')).toBeVisible();
-    expect(scoped.getByText('gehst')).toBeVisible();
+  it('switches between tense tabs and shows all tables for the selected tense', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <WordDetailsPanel
+        data={{
+          primary: 'aller',
+          alternatives: [
+            { term: 'marcher', gloss: 'to walk' },
+            { term: 'partir', gloss: 'to leave' },
+            { term: 'voyager', gloss: 'to travel' },
+          ],
+          grammar: {
+            notes: 'Verb. Common irregular verb.',
+          },
+          pronunciation: 'ah-LAY',
+          verbConjugation: {
+            coverage: 'full',
+            present: [
+              {
+                title: 'Present indicative',
+                rows: [
+                  { label: 'je', form: 'vais' },
+                  { label: 'tu', form: 'vas' },
+                ],
+              },
+            ],
+            past: [
+              {
+                title: 'Passé composé',
+                rows: [
+                  { label: 'je', form: 'suis allé(e)' },
+                  { label: 'tu', form: 'es allé(e)' },
+                ],
+              },
+              {
+                title: 'Imparfait',
+                rows: [
+                  { label: 'je', form: 'allais' },
+                  { label: 'tu', form: 'allais' },
+                ],
+              },
+            ],
+            future: [
+              {
+                title: 'Futur simple',
+                rows: [
+                  { label: 'je', form: 'irai' },
+                  { label: 'tu', form: 'iras' },
+                ],
+              },
+            ],
+          },
+          examples: [
+            { source: 'I am going.', target: 'Je vais.' },
+            { source: 'We went out.', target: 'Nous sommes allés.' },
+            { source: 'She will go tomorrow.', target: 'Elle ira demain.' },
+          ],
+        }}
+        isLoadingVerbConjugation={false}
+        onGenerateVerbConjugation={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Past' }));
+
+    expect(screen.getByRole('button', { name: 'Past' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Passé composé')).toBeVisible();
+    expect(screen.getByText('Imparfait')).toBeVisible();
+    expect(screen.queryByText('Futur simple')).not.toBeInTheDocument();
   });
 
   it('omits the verb conjugation card for non-verbs', () => {
@@ -67,6 +152,8 @@ describe('WordDetailsPanel', () => {
             { source: 'We bought a house.', target: 'Wir haben ein Haus gekauft.' },
           ],
         }}
+        isLoadingVerbConjugation={false}
+        onGenerateVerbConjugation={vi.fn()}
       />,
     );
 
