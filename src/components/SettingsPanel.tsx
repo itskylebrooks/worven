@@ -14,7 +14,11 @@ import pkg from '../../package.json';
 import { SUPPORTED_LANGUAGES, TRANSLATION_CONTEXTS } from '../constants/languages';
 import { useAnimatedModal } from '../hooks/useAnimatedModal';
 import { usePWA, type PWAInstallMode } from '../hooks/usePWA';
-import { PROVIDER_LABELS, PROVIDER_MODELS } from '../lib/settings';
+import {
+  PROVIDER_LABELS,
+  PROVIDER_MODELS,
+  providerUsesClientKey,
+} from '../lib/provider-config';
 import { ConfirmModal } from './ConfirmModal';
 import type { AppSettings, ProviderId } from '../types';
 
@@ -140,6 +144,7 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
   });
   const { isInstalled, canInstall, installMode, install, nativePromptAvailable } = usePWA();
   const providerModels = PROVIDER_MODELS[settings.provider];
+  const requiresClientApiKey = providerUsesClientKey(settings.provider);
   const installCopy = getInstallModalCopy(installMode);
 
   async function handleShare() {
@@ -329,6 +334,7 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
                 <div className="col-span-3 col-start-2 relative w-full">
                   <select
                     id="provider"
+                    aria-label="Provider"
                     value={settings.provider}
                     onChange={(event) => handleProviderChange(event.target.value as ProviderId)}
                     className="appearance-none h-10 w-full rounded-lg border border-subtle bg-transparent px-3 pr-7 text-sm text-strong"
@@ -352,6 +358,7 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
                 <div className="col-span-3 col-start-2 relative w-full">
                   <select
                     id="model"
+                    aria-label="Model"
                     value={settings.model}
                     onChange={(event) =>
                       updateSettings(settings, onChange, { model: event.target.value })
@@ -375,23 +382,32 @@ export function SettingsPanel({ open, settings, onClose, onChange }: SettingsPan
               </div>
               <div className="col-span-2 grid grid-cols-4 gap-2">
                 <div className="col-span-3 col-start-2">
-                  <input
-                    id={`${settings.provider}-api-key`}
-                    name={`${settings.provider}-api-key`}
-                    type="password"
-                    className="h-10 w-full rounded-lg border border-subtle bg-transparent px-3 text-sm text-strong outline-none transition"
-                    autoComplete="new-password"
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    data-1p-ignore="true"
-                    data-bwignore="true"
-                    data-form-type="other"
-                    data-lpignore="true"
-                    spellCheck={false}
-                    value={settings.apiKeys[settings.provider]}
-                    onChange={(event) => handleApiKeyChange(settings.provider, event.target.value)}
-                    placeholder={`Paste ${PROVIDER_LABELS[settings.provider]} key`}
-                  />
+                  {requiresClientApiKey ? (
+                    <input
+                      id={`${settings.provider}-api-key`}
+                      name={`${settings.provider}-api-key`}
+                      aria-label="API key"
+                      type="password"
+                      className="h-10 w-full rounded-lg border border-subtle bg-transparent px-3 text-sm text-strong outline-none transition"
+                      autoComplete="new-password"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      data-1p-ignore="true"
+                      data-bwignore="true"
+                      data-form-type="other"
+                      data-lpignore="true"
+                      spellCheck={false}
+                      value={settings.apiKeys[settings.provider]}
+                      onChange={(event) =>
+                        handleApiKeyChange(settings.provider, event.target.value)
+                      }
+                      placeholder={`Paste ${PROVIDER_LABELS[settings.provider]} key`}
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-subtle bg-transparent px-3 py-2 text-sm text-muted">
+                      Runs through the Worven server.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

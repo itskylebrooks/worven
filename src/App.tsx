@@ -16,12 +16,12 @@ import {
   updateHistoryItem,
 } from './lib/history';
 import { translateWithProvider } from './lib/providers';
+import { PROVIDER_LABELS } from './lib/provider-config';
 import {
   applyTheme,
   loadSettings,
   loadSettingsSnapshot,
   persistSettings,
-  PROVIDER_LABELS,
 } from './lib/settings';
 import type {
   AppSettings,

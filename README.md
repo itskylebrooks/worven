@@ -9,7 +9,7 @@ For single words, Worven behaves like a smart dictionary. It returns a primary t
 - Translate single words and short phrases with dictionary-style detail.
 - Translate sentences and longer passages in the same interface.
 - Switch translation direction between source-to-target and target-to-native workflows.
-- Choose between OpenAI, Anthropic, and Gemini.
+- Use Groq by default without entering an API key, or switch to OpenAI, Anthropic, or Gemini with your own key.
 - Pick the model, target language, native language, and translation tone from Settings.
 - Save translation history locally in the browser and restore previous results.
 - Copy primary translations and alternative sentence renderings with one click.
@@ -23,8 +23,9 @@ Worven is built around local-first usage:
 
 - There is no account system.
 - There is no remote database for user data.
-- API keys are provided by the user.
-- API keys are encrypted in the browser when secure storage is available, using Web Crypto with an IndexedDB-backed key store.
+- Groq is the default provider and uses a server-side `GROQ_API_KEY`.
+- Optional OpenAI, Anthropic, and Gemini API keys are still user-provided.
+- Optional user API keys are encrypted in the browser when secure storage is available, using Web Crypto with an IndexedDB-backed key store.
 - App settings and translation history are stored locally in browser storage.
 
 Current implementation note:
@@ -34,7 +35,7 @@ Current implementation note:
 
 ## How It Works
 
-The UI is a React + Vite app. Translation requests are sent to a local `/api/translate` endpoint exposed by Vite middleware during development and preview. That handler forwards the request to the selected provider, normalizes the response, and returns a consistent shape to the client.
+The UI is a React + Vite app. Translation requests are sent to `/api/translate`. In local development, that endpoint is exposed by Vite middleware. In production on Vercel, the same server code runs through `api/translate.ts`. The handler forwards the request to the selected provider, normalizes the response, and returns a consistent shape to the client.
 
 This keeps the project lightweight:
 
@@ -69,11 +70,27 @@ pnpm install
 
 ### Start the development server
 
+Create a local env file first:
+
+```bash
+cp .env.example .env.local
+```
+
+Set `GROQ_API_KEY` in `.env.local`. Do not prefix it with `VITE_`, because it must stay server-only.
+
+If the repo is linked to Vercel, you can also pull Development env vars with:
+
+```bash
+vercel env pull .env.local
+```
+
+Then start the app:
+
 ```bash
 pnpm dev
 ```
 
-The app will start in Vite development mode. Open the local URL shown in the terminal, then add your provider API key in the Settings panel before translating.
+The app will start in Vite development mode. Open the local URL shown in the terminal and you can translate immediately with Groq. Only add an API key in Settings if you switch to OpenAI, Anthropic, or Gemini.
 
 ### Local HTTPS dev for device PWA testing
 
@@ -139,11 +156,16 @@ pnpm preview
 
 1. Open Worven.
 2. Go to Settings.
-3. Choose a provider and model.
-4. Paste your API key.
-5. Select your native language, target language, and preferred tone.
-6. Enter a word, sentence, or paragraph.
-7. Press Enter or use the translate button.
+3. Leave Groq selected to use the default server-backed model, or choose another provider and paste your API key.
+4. Select your native language, target language, and preferred tone.
+5. Enter a word, sentence, or paragraph.
+6. Press Enter or use the translate button.
+
+## Vercel Environment Setup
+
+- Add `GROQ_API_KEY` to your Vercel project environment variables for Production, Preview, and Development.
+- The key is encrypted at rest by Vercel and available to the server function through `process.env.GROQ_API_KEY`.
+- Keep `GROQ_API_KEY` unprefixed. Do not use `VITE_GROQ_API_KEY`, because `VITE_` variables are exposed to the client bundle.
 
 ## PWA Support
 

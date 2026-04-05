@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import type { ServerOptions as HttpsServerOptions } from 'node:https';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { handleTranslateApi } from './src/server/translate-api';
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  Object.assign(process.env, env);
+
   const isDev = command === 'serve';
   const isTest = process.env.VITEST === 'true';
   const useDevHttps = process.env.WORVEN_DEV_HTTPS === 'true';

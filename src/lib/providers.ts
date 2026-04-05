@@ -46,31 +46,31 @@ function parseTranslateApiResponse(value: unknown): TranslateApiResponse | null 
 
 export async function translateWithProvider(
   provider: ProviderId,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string,
   request: TranslationRequest & { mode: 'word'; requestVerbConjugationExpansion: true },
 ): Promise<VerbConjugationExpansionPayload>;
 export async function translateWithProvider(
   provider: ProviderId,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string,
   request: TranslationRequest & { mode: 'word' },
 ): Promise<WordTranslationPayload>;
 export async function translateWithProvider(
   provider: ProviderId,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string,
   request: TranslationRequest & { mode: 'sentence' },
 ): Promise<SentenceTranslationPayload>;
 export async function translateWithProvider(
   provider: ProviderId,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
 ): Promise<TranslateApiResult>;
 export async function translateWithProvider(
   provider: ProviderId,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
 ): Promise<TranslateApiResult> {

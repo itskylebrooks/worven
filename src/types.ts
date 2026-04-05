@@ -1,4 +1,4 @@
-export type ProviderId = 'openai' | 'anthropic' | 'gemini';
+export type ProviderId = 'groq' | 'openai' | 'anthropic' | 'gemini';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type TranslationMode = 'word' | 'sentence';
 export type TranslationDirectionMode = 'source_to_target' | 'target_to_native';

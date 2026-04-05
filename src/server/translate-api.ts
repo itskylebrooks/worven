@@ -1,4 +1,10 @@
 import { parseJsonObject } from '../lib/json.js';
+import {
+  isAllowedModel,
+  isProviderId,
+  providerUsesClientKey,
+  providerUsesServerKey,
+} from '../lib/provider-config.js';
 import { buildTranslationPrompts } from '../lib/prompts.js';
 import type {
   NounCaseData,
@@ -20,12 +26,30 @@ type RawTranslationPayload =
 
 type TranslateApiInput = {
   provider: ProviderId;
-  apiKey: string;
+  apiKey?: string;
   model: string;
   request: TranslationRequest;
 };
 
 type RequestChunk = { toString: (encoding?: string) => string } | string;
+type RequestHeaders = Headers | Record<string, string | string[] | undefined> | undefined;
+
+const MAX_GROQ_SOURCE_TEXT_LENGTH = 5000;
+const GROQ_RATE_LIMIT_MAX_REQUESTS = 20;
+const GROQ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const groqRateLimitState = new Map<string, { count: number; resetAt: number }>();
+
+class ApiError extends Error {
+  status: number;
+  responseHeaders?: Record<string, string>;
+
+  constructor(status: number, message: string, responseHeaders?: Record<string, string>) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.responseHeaders = responseHeaders;
+  }
+}
 
 function jsonResponse(
   res: {
@@ -35,9 +59,13 @@ function jsonResponse(
   },
   status: number,
   body: unknown,
+  headers?: Record<string, string>,
 ) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  for (const [name, value] of Object.entries(headers ?? {})) {
+    res.setHeader(name, value);
+  }
   res.end(JSON.stringify(body));
 }
 
@@ -92,6 +120,144 @@ function pathnameMatches(url: string | undefined, expectedPath: string) {
   } catch {
     return url === expectedPath;
   }
+}
+
+function getOutputSchemaName(request: TranslationRequest) {
+  if (request.mode === 'word') {
+    return request.requestVerbConjugationExpansion
+      ? 'word_conjugation_expansion'
+      : 'word_translation';
+  }
+
+  return request.requestAlternative
+    ? 'sentence_translation_with_alternative'
+    : 'sentence_translation';
+}
+
+function getHeaderValue(headers: RequestHeaders, name: string): string | null {
+  if (!headers) {
+    return null;
+  }
+
+  if (headers instanceof Headers) {
+    return headers.get(name);
+  }
+
+  const directValue = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(directValue)) {
+    return directValue[0] ?? null;
+  }
+
+  return typeof directValue === 'string' ? directValue : null;
+}
+
+function getRequestIp(req: {
+  headers?: RequestHeaders;
+  socket?: { remoteAddress?: string | null };
+}): string {
+  const forwardedFor = getHeaderValue(req.headers, 'x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0]?.trim() || 'unknown';
+  }
+
+  const realIp = getHeaderValue(req.headers, 'x-real-ip');
+  if (realIp) {
+    return realIp.trim();
+  }
+
+  return req.socket?.remoteAddress?.trim() || 'unknown';
+}
+
+function enforceGroqRateLimit(req: {
+  headers?: RequestHeaders;
+  socket?: { remoteAddress?: string | null };
+}) {
+  const ip = getRequestIp(req);
+  const now = Date.now();
+  const existing = groqRateLimitState.get(ip);
+
+  if (!existing || existing.resetAt <= now) {
+    groqRateLimitState.set(ip, {
+      count: 1,
+      resetAt: now + GROQ_RATE_LIMIT_WINDOW_MS,
+    });
+    return;
+  }
+
+  if (existing.count >= GROQ_RATE_LIMIT_MAX_REQUESTS) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
+    throw new ApiError(429, 'Too many Groq translation requests. Please try again shortly.', {
+      'Retry-After': String(retryAfterSeconds),
+    });
+  }
+
+  existing.count += 1;
+}
+
+function parseTranslateApiInput(value: unknown): TranslateApiInput {
+  if (typeof value !== 'object' || value === null) {
+    throw new ApiError(400, 'Translation request body must be a JSON object.');
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const provider = candidate.provider;
+  const model = candidate.model;
+  const request = candidate.request;
+
+  if (!isProviderId(provider)) {
+    throw new ApiError(400, 'Unsupported provider.');
+  }
+
+  if (typeof model !== 'string' || !isAllowedModel(provider, model)) {
+    throw new ApiError(400, 'Unsupported model for the selected provider.');
+  }
+
+  if (typeof request !== 'object' || request === null) {
+    throw new ApiError(400, 'Translation request payload is missing.');
+  }
+
+  const translationRequest = request as TranslationRequest;
+
+  if (typeof translationRequest.sourceText !== 'string') {
+    throw new ApiError(400, 'Translation request must include source text.');
+  }
+
+  if (
+    provider === 'groq' &&
+    translationRequest.sourceText.trim().length > MAX_GROQ_SOURCE_TEXT_LENGTH
+  ) {
+    throw new ApiError(
+      400,
+      `Groq requests are limited to ${MAX_GROQ_SOURCE_TEXT_LENGTH} characters of source text.`,
+    );
+  }
+
+  return {
+    provider,
+    model,
+    request: translationRequest,
+    apiKey: typeof candidate.apiKey === 'string' ? candidate.apiKey : undefined,
+  };
+}
+
+function resolveProviderApiKey(provider: ProviderId, apiKey: string | undefined) {
+  if (providerUsesServerKey(provider)) {
+    const groqApiKey = process.env.GROQ_API_KEY?.trim();
+    if (!groqApiKey) {
+      throw new ApiError(
+        500,
+        'Groq is not configured on the server. Add GROQ_API_KEY to your environment variables.',
+      );
+    }
+
+    return groqApiKey;
+  }
+
+  if (providerUsesClientKey(provider) && !apiKey?.trim()) {
+    throw new ApiError(400, 'Add an API key for the selected provider in Settings before translating.');
+  }
+
+  return apiKey?.trim() ?? '';
 }
 
 function ensureShape(
@@ -481,6 +647,48 @@ function extractGeminiText(data: unknown): string {
   throw new Error('Gemini did not return text output.');
 }
 
+function extractGroqText(data: unknown): string {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'choices' in data &&
+    Array.isArray((data as { choices?: unknown[] }).choices)
+  ) {
+    const firstChoice = (
+      data as {
+        choices: Array<{
+          message?: {
+            content?: string | Array<{ text?: string; type?: string }>;
+            refusal?: string | null;
+          };
+        }>;
+      }
+    ).choices[0];
+    const message = firstChoice?.message;
+
+    if (typeof message?.refusal === 'string' && message.refusal.trim()) {
+      throw new Error(message.refusal.trim());
+    }
+
+    if (typeof message?.content === 'string') {
+      return message.content;
+    }
+
+    if (Array.isArray(message?.content)) {
+      const text = message.content
+        .map((part) => (typeof part.text === 'string' ? part.text : ''))
+        .join('\n')
+        .trim();
+
+      if (text) {
+        return text;
+      }
+    }
+  }
+
+  throw new Error('Groq did not return text output.');
+}
+
 async function providerError(providerName: string, response: Response) {
   const fallbackMessage = `${providerName} request failed with status ${response.status}.`;
 
@@ -511,14 +719,7 @@ async function callOpenAI(apiKey: string, model: string, request: TranslationReq
       text: {
         format: {
           type: 'json_schema',
-          name:
-            request.mode === 'word'
-              ? request.requestVerbConjugationExpansion
-                ? 'word_conjugation_expansion'
-                : 'word_translation'
-              : request.requestAlternative
-                ? 'sentence_translation_with_alternative'
-                : 'sentence_translation',
+          name: getOutputSchemaName(request),
           strict: true,
           schema: outputSchema,
         },
@@ -532,6 +733,45 @@ async function callOpenAI(apiKey: string, model: string, request: TranslationReq
 
   const data = (await response.json()) as unknown;
   return parseJsonObject<RawTranslationPayload>(extractOpenAIText(data));
+}
+
+async function callGroq(apiKey: string, model: string, request: TranslationRequest) {
+  const { systemPrompt, userPrompt, outputSchema } = buildTranslationPrompts(request);
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: getOutputSchemaName(request),
+          strict: true,
+          schema: outputSchema,
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw await providerError('Groq', response);
+  }
+
+  const data = (await response.json()) as unknown;
+  return parseJsonObject<RawTranslationPayload>(extractGroqText(data));
 }
 
 async function callAnthropic(apiKey: string, model: string, request: TranslationRequest) {
@@ -608,25 +848,26 @@ async function callGemini(apiKey: string, model: string, request: TranslationReq
 
 async function translateWithProvider(
   provider: ProviderId,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
 ) {
-  if (!apiKey.trim()) {
-    throw new Error('Add an API key for the selected provider in Settings before translating.');
-  }
+  const resolvedApiKey = resolveProviderApiKey(provider, apiKey);
 
   let payload: RawTranslationPayload;
 
   switch (provider) {
+    case 'groq':
+      payload = await callGroq(resolvedApiKey, model, request);
+      break;
     case 'openai':
-      payload = await callOpenAI(apiKey, model, request);
+      payload = await callOpenAI(resolvedApiKey, model, request);
       break;
     case 'anthropic':
-      payload = await callAnthropic(apiKey, model, request);
+      payload = await callAnthropic(resolvedApiKey, model, request);
       break;
     case 'gemini':
-      payload = await callGemini(apiKey, model, request);
+      payload = await callGemini(resolvedApiKey, model, request);
       break;
     default:
       throw new Error(`Unsupported provider: ${String(provider)}`);
@@ -641,6 +882,8 @@ export async function handleTranslateApi(
     url?: string;
     body?: unknown;
     on?: (event: string, handler: (chunk?: RequestChunk) => void) => void;
+    headers?: RequestHeaders;
+    socket?: { remoteAddress?: string | null };
   },
   res: {
     statusCode?: number;
@@ -669,7 +912,11 @@ export async function handleTranslateApi(
 
   try {
     const rawBody = await readRequestBody(req);
-    const body = JSON.parse(rawBody) as TranslateApiInput;
+    const body = parseTranslateApiInput(JSON.parse(rawBody) as unknown);
+
+    if (body.provider === 'groq') {
+      enforceGroqRateLimit(req);
+    }
 
     const result = await translateWithProvider(
       body.provider,
@@ -680,6 +927,11 @@ export async function handleTranslateApi(
 
     jsonResponse(res, 200, { result });
   } catch (error) {
+    if (error instanceof ApiError) {
+      jsonResponse(res, error.status, { error: error.message }, error.responseHeaders);
+      return true;
+    }
+
     const message =
       error instanceof Error ? error.message : 'Translation failed for an unknown reason.';
     jsonResponse(res, 500, { error: message });
