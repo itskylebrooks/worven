@@ -1,4 +1,4 @@
-import type { TranslationContext } from '../types';
+import type { TranslationContext } from '../types.js';
 
 export const SUPPORTED_LANGUAGES = [
   'English',

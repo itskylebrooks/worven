@@ -120,6 +120,7 @@ describe('/api/translate', () => {
         headers: expect.objectContaining({
           Authorization: 'Bearer groq-secret',
         }),
+        signal: expect.any(AbortSignal),
       }),
     );
 
@@ -315,6 +316,52 @@ describe('/api/translate', () => {
     expect(res.statusCode).toBe(400);
     expect(res.readJson()).toEqual({
       error: 'Unsupported model for the selected provider.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed request fields before calling an upstream provider', async () => {
+    vi.stubEnv('GROQ_API_KEY', 'groq-secret');
+    const res = createResponse();
+
+    await handleTranslateApi(
+      createRequest({
+        provider: 'groq',
+        model: 'openai/gpt-oss-20b',
+        request: {
+          ...sentenceRequest,
+          context: 'Untrusted context',
+        },
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.readJson()).toEqual({
+      error: 'Translation request payload is invalid.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized request bodies before parsing them', async () => {
+    const res = createResponse();
+
+    await handleTranslateApi(
+      createRequest({
+        provider: 'openai',
+        model: 'gpt-5.4-mini',
+        apiKey: 'sk-openai',
+        request: {
+          ...sentenceRequest,
+          sourceText: 'a'.repeat(70_000),
+        },
+      }),
+      res,
+    );
+
+    expect(res.statusCode).toBe(413);
+    expect(res.readJson()).toEqual({
+      error: 'Translation request body is too large.',
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });

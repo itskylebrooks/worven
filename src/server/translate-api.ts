@@ -1,4 +1,5 @@
 import { parseJsonObject } from '../lib/json.js';
+import { isTranslationRequest } from '../lib/translation-contract.js';
 import {
   isAllowedModel,
   isProviderId,
@@ -35,6 +36,9 @@ type RequestChunk = { toString: (encoding?: string) => string } | string;
 type RequestHeaders = Headers | Record<string, string | string[] | undefined> | undefined;
 
 const MAX_GROQ_SOURCE_TEXT_LENGTH = 5000;
+const MAX_SOURCE_TEXT_LENGTH = 20_000;
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
+const PROVIDER_TIMEOUT_MS = 30_000;
 const GROQ_RATE_LIMIT_MAX_REQUESTS = 20;
 const GROQ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const groqRateLimitState = new Map<string, { count: number; resetAt: number }>();
@@ -74,20 +78,36 @@ function readRequestBody(req: {
   body?: unknown;
   on?: (event: string, handler: (chunk?: RequestChunk) => void) => void;
 }): Promise<string> {
+  const ensureAllowedSize = (body: string) => {
+    if (new TextEncoder().encode(body).byteLength > MAX_REQUEST_BODY_BYTES) {
+      throw new ApiError(413, 'Translation request body is too large.');
+    }
+
+    return body;
+  };
+
   if (typeof req.body === 'string') {
-    return Promise.resolve(req.body);
+    return Promise.resolve(ensureAllowedSize(req.body));
   }
 
   if (req.body instanceof Uint8Array) {
+    if (req.body.byteLength > MAX_REQUEST_BODY_BYTES) {
+      return Promise.reject(new ApiError(413, 'Translation request body is too large.'));
+    }
+
     return Promise.resolve(new TextDecoder().decode(req.body));
   }
 
   if (req.body instanceof ArrayBuffer) {
+    if (req.body.byteLength > MAX_REQUEST_BODY_BYTES) {
+      return Promise.reject(new ApiError(413, 'Translation request body is too large.'));
+    }
+
     return Promise.resolve(new TextDecoder().decode(new Uint8Array(req.body)));
   }
 
   if (typeof req.body === 'object' && req.body !== null) {
-    return Promise.resolve(JSON.stringify(req.body));
+    return Promise.resolve(ensureAllowedSize(JSON.stringify(req.body)));
   }
 
   if (typeof req.on !== 'function') {
@@ -98,16 +118,37 @@ function readRequestBody(req: {
 
   return new Promise((resolve, reject) => {
     let data = '';
+    let receivedBytes = 0;
+    let settled = false;
 
     on('data', (chunk) => {
-      if (typeof chunk === 'undefined') {
+      if (settled || typeof chunk === 'undefined') {
         return;
       }
 
-      data += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+      const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+      receivedBytes += new TextEncoder().encode(text).byteLength;
+
+      if (receivedBytes > MAX_REQUEST_BODY_BYTES) {
+        settled = true;
+        reject(new ApiError(413, 'Translation request body is too large.'));
+        return;
+      }
+
+      data += text;
     });
-    on('end', () => resolve(data));
-    on('error', reject);
+    on('end', () => {
+      if (!settled) {
+        settled = true;
+        resolve(data);
+      }
+    });
+    on('error', (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    });
   });
 }
 
@@ -217,15 +258,26 @@ function parseTranslateApiInput(value: unknown): TranslateApiInput {
     throw new ApiError(400, 'Translation request payload is missing.');
   }
 
-  const translationRequest = request as TranslationRequest;
+  if (!isTranslationRequest(request)) {
+    throw new ApiError(400, 'Translation request payload is invalid.');
+  }
 
-  if (typeof translationRequest.sourceText !== 'string') {
+  const translationRequest = request;
+  const sourceTextLength = translationRequest.sourceText.trim().length;
+  if (sourceTextLength === 0) {
     throw new ApiError(400, 'Translation request must include source text.');
+  }
+
+  if (sourceTextLength > MAX_SOURCE_TEXT_LENGTH) {
+    throw new ApiError(
+      400,
+      `Translation requests are limited to ${MAX_SOURCE_TEXT_LENGTH} characters of source text.`,
+    );
   }
 
   if (
     provider === 'groq' &&
-    translationRequest.sourceText.trim().length > MAX_GROQ_SOURCE_TEXT_LENGTH
+    sourceTextLength > MAX_GROQ_SOURCE_TEXT_LENGTH
   ) {
     throw new ApiError(
       400,
@@ -748,6 +800,7 @@ async function callOpenAI(apiKey: string, model: string, request: TranslationReq
         },
       },
     }),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -792,6 +845,7 @@ async function callGroq(apiKey: string, model: string, request: TranslationReque
       ],
       response_format: responseFormat,
     }),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -828,6 +882,7 @@ async function callAnthropic(apiKey: string, model: string, request: Translation
         },
       },
     }),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -863,6 +918,7 @@ async function callGemini(apiKey: string, model: string, request: TranslationReq
           responseJsonSchema: outputSchema,
         },
       }),
+      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
     },
   );
 
@@ -940,7 +996,15 @@ export async function handleTranslateApi(
 
   try {
     const rawBody = await readRequestBody(req);
-    const body = parseTranslateApiInput(JSON.parse(rawBody) as unknown);
+    let parsedBody: unknown;
+
+    try {
+      parsedBody = JSON.parse(rawBody) as unknown;
+    } catch {
+      throw new ApiError(400, 'Translation request body must be valid JSON.');
+    }
+
+    const body = parseTranslateApiInput(parsedBody);
 
     if (body.provider === 'groq') {
       enforceGroqRateLimit(req);

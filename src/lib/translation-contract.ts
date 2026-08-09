@@ -1,4 +1,4 @@
-import { SUPPORTED_LANGUAGES, TRANSLATION_CONTEXTS } from '../constants/languages';
+import { SUPPORTED_LANGUAGES, TRANSLATION_CONTEXTS } from '../constants/languages.js';
 import type {
   NounCaseData,
   NounCaseTable,
@@ -11,7 +11,7 @@ import type {
   WordAlternative,
   WordTranslationPayload,
   WordUsageExample,
-} from '../types';
+} from '../types.js';
 
 export type TranslationApiResult =
   | WordTranslationPayload
