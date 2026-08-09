@@ -120,8 +120,8 @@ Worven currently supports 5 providers:
 
 Current allowed models by provider:
 
-- OpenAI: `gpt-5.4-mini`, `gpt-5.4-nano`
-- Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
+- OpenAI: `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`
+- Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-fable-5`, `claude-opus-5`, `claude-sonnet-5`
 - Gemini: `gemini-2.5-flash`, `gemini-2.5-pro`
 - DeepSeek: `deepseek-v4-flash`, `deepseek-v4-pro`
 - xAI: `grok-4.5`, `grok-4.3`

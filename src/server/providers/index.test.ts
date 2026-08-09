@@ -174,6 +174,87 @@ describe('translation provider adapters', () => {
     });
   });
 
+  it('uses low reasoning effort for GPT-5.6 translations', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({ translation: 'Hallo da', alternative: null }),
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    await callProvider('openai', 'openai-key', 'gpt-5.6-terra', request);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(init?.body)) as { reasoning?: unknown };
+    expect(body.reasoning).toEqual({ effort: 'low' });
+  });
+
+  it('gives Claude 5 enough output budget and uses low effort', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ translation: 'Hallo da', alternative: null }),
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    await callProvider('anthropic', 'anthropic-key', 'claude-sonnet-5', request);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(init?.body)) as {
+      max_tokens?: unknown;
+      output_config?: { effort?: unknown };
+    };
+    expect(body.max_tokens).toBe(8192);
+    expect(body.output_config?.effort).toBe('low');
+  });
+
+  it('surfaces OpenAI refusal output as an unprocessable request', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output: [
+            {
+              content: [{ type: 'refusal', refusal: 'I cannot help with that request.' }],
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    const error = await callProvider('openai', 'openai-key', 'gpt-5.6-sol', request).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(ProviderError);
+    expect(error).toMatchObject({ status: 422 });
+  });
+
+  it('surfaces successful HTTP refusal responses as unprocessable requests', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ stop_reason: 'refusal', content: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const error = await callProvider('anthropic', 'anthropic-key', 'claude-fable-5', request).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(ProviderError);
+    expect(error).toMatchObject({ status: 422 });
+  });
+
   it('maps a rejected client key to an authentication response', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: { message: 'Incorrect API key.' } }), {

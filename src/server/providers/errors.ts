@@ -57,6 +57,13 @@ export async function createProviderResponseError(
   );
 }
 
+export function createProviderRefusalError(provider: ProviderId): ProviderError {
+  return new ProviderError(
+    422,
+    `${providerLabel(provider)} declined this request. Try rephrasing it or selecting another model.`,
+  );
+}
+
 export function normalizeProviderFailure(provider: ProviderId, error: unknown): ProviderError {
   if (error instanceof ProviderError) {
     return error;

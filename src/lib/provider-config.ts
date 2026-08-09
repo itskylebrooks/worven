@@ -8,11 +8,17 @@ export interface ProviderConfig {
 export const PROVIDER_CONFIGS: Record<ProviderId, ProviderConfig> = {
   openai: {
     label: 'OpenAI',
-    models: ['gpt-5.4-mini', 'gpt-5.4-nano'],
+    models: ['gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'],
   },
   anthropic: {
     label: 'Anthropic',
-    models: ['claude-sonnet-4-6', 'claude-haiku-4-5'],
+    models: [
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5',
+      'claude-fable-5',
+      'claude-opus-5',
+      'claude-sonnet-5',
+    ],
   },
   gemini: {
     label: 'Gemini',

@@ -1,11 +1,20 @@
 import { parseJsonObject } from '../../lib/json.js';
 import { buildTranslationPrompts } from '../../lib/prompts.js';
 import type { TranslationRequest } from '../../types.js';
-import { createProviderResponseError } from './errors.js';
+import { createProviderRefusalError, createProviderResponseError } from './errors.js';
 import { PROVIDER_TIMEOUT_MS } from './shared.js';
 import type { RawTranslationPayload } from './types.js';
 
 function extractAnthropicText(data: unknown): string {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'stop_reason' in data &&
+    (data as { stop_reason?: unknown }).stop_reason === 'refusal'
+  ) {
+    throw createProviderRefusalError('anthropic');
+  }
+
   if (
     typeof data === 'object' &&
     data !== null &&
@@ -40,10 +49,11 @@ export async function callAnthropic(
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1200,
+      max_tokens: 8192,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
       output_config: {
+        ...(model.endsWith('-5') ? { effort: 'low' } : {}),
         format: {
           type: 'json_schema',
           schema: outputSchema,

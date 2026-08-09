@@ -1,7 +1,7 @@
 import { parseJsonObject } from '../../lib/json.js';
 import { buildTranslationPrompts } from '../../lib/prompts.js';
 import type { TranslationRequest } from '../../types.js';
-import { createProviderResponseError } from './errors.js';
+import { createProviderRefusalError, createProviderResponseError } from './errors.js';
 import { getOutputSchemaName, PROVIDER_TIMEOUT_MS } from './shared.js';
 import type { RawTranslationPayload } from './types.js';
 
@@ -29,6 +29,14 @@ function extractOpenAIText(data: unknown): string {
     for (const item of output) {
       if (!Array.isArray(item.content)) continue;
       for (const content of item.content) {
+        if (
+          content.type === 'refusal' &&
+          'refusal' in content &&
+          typeof content.refusal === 'string'
+        ) {
+          throw createProviderRefusalError('openai');
+        }
+
         if (content.type === 'output_text' && typeof content.text === 'string') {
           chunks.push(content.text);
         }
@@ -59,6 +67,7 @@ export async function callOpenAI(
       model,
       instructions: systemPrompt,
       input: userPrompt,
+      ...(model.startsWith('gpt-5.6-') ? { reasoning: { effort: 'low' } } : {}),
       text: {
         format: {
           type: 'json_schema',
