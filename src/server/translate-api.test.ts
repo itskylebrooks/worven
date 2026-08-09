@@ -1,4 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const checkRateLimitMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<{ rateLimited: boolean; error?: 'not-found' | 'blocked' }> => ({
+    rateLimited: false,
+  })),
+);
+
+vi.mock('@vercel/firewall', () => ({
+  checkRateLimit: checkRateLimitMock,
+}));
+
 import { handleTranslateApi } from './translate-api.js';
 
 type TestRequestOverrides = Partial<Parameters<typeof handleTranslateApi>[0]>;
@@ -55,6 +66,8 @@ describe('/api/translate', () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+    checkRateLimitMock.mockReset();
+    checkRateLimitMock.mockResolvedValue({ rateLimited: false });
     vi.stubGlobal('fetch', fetchMock);
     vi.unstubAllEnvs();
   });
@@ -366,6 +379,56 @@ describe('/api/translate', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('rejects browser requests from another origin', async () => {
+    vi.stubEnv('GROQ_API_KEY', 'groq-secret');
+    const res = createResponse();
+
+    await handleTranslateApi(
+      createRequest(
+        {
+          provider: 'groq',
+          model: 'openai/gpt-oss-20b',
+          request: sentenceRequest,
+        },
+        {
+          headers: {
+            host: 'worven.example',
+            origin: 'https://attacker.example',
+            'x-forwarded-for': '4.3.2.1',
+          },
+        },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(res.readJson()).toEqual({
+      error: 'Cross-origin translation requests are not allowed.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('echoes an allowed same-origin value instead of using a wildcard', async () => {
+    const res = createResponse();
+
+    await handleTranslateApi(
+      createRequest(
+        {},
+        {
+          method: 'OPTIONS',
+          headers: {
+            host: 'worven.example',
+            origin: 'https://worven.example',
+          },
+        },
+      ),
+      res,
+    );
+
+    expect(res.statusCode).toBe(204);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://worven.example');
+  });
+
   it('surfaces Groq refusal messages', async () => {
     vi.stubEnv('GROQ_API_KEY', 'groq-secret');
     fetchMock.mockResolvedValue(
@@ -491,5 +554,28 @@ describe('/api/translate', () => {
     );
 
     expect(openaiRes.statusCode).toBe(200);
+  });
+
+  it('uses the Vercel Firewall limiter and fails before an upstream request', async () => {
+    vi.stubEnv('VERCEL', '1');
+    vi.stubEnv('GROQ_API_KEY', 'groq-secret');
+    checkRateLimitMock.mockResolvedValueOnce({ rateLimited: true });
+    const res = createResponse();
+
+    await handleTranslateApi(
+      createRequest({
+        provider: 'groq',
+        model: 'openai/gpt-oss-20b',
+        request: sentenceRequest,
+      }),
+      res,
+    );
+
+    expect(checkRateLimitMock).toHaveBeenCalledWith(
+      'worven-groq-translate',
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    );
+    expect(res.statusCode).toBe(429);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

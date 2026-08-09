@@ -166,9 +166,11 @@ Current request handling details:
 
 - `OPTIONS` is supported
 - non-`POST` methods return `405`
-- CORS headers are set to `*`
+- browser requests are restricted to the app's own origin
+- request bodies are limited to 64 KiB and upstream calls time out after 30 seconds
 - Groq requests are limited to 5,000 characters of source text
 - Groq requests are rate-limited to 20 requests per 5 minutes per IP
+- local development uses a bounded in-memory limiter; Vercel uses its distributed Firewall
 
 ## PWA Support
 
@@ -233,6 +235,11 @@ GROQ_API_KEY=your-groq-key
 ```
 
 `GROQ_API_KEY` must stay server-side. Do not prefix it with `VITE_`.
+
+For production on Vercel, create and publish a Firewall rule whose condition is
+`@vercel/firewall`, whose rate-limit ID is `worven-groq-translate`, and whose limit is 20
+requests per 5 minutes. Production Groq requests fail closed if that rule is missing or the
+Firewall check is unavailable.
 
 If the project is linked to Vercel, you can also pull development env vars with:
 

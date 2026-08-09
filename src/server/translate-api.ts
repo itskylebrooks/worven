@@ -1,3 +1,4 @@
+import { checkRateLimit } from '@vercel/firewall';
 import { parseJsonObject } from '../lib/json.js';
 import { isTranslationRequest } from '../lib/translation-contract.js';
 import {
@@ -41,6 +42,8 @@ const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 const PROVIDER_TIMEOUT_MS = 30_000;
 const GROQ_RATE_LIMIT_MAX_REQUESTS = 20;
 const GROQ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const GROQ_RATE_LIMIT_ID = 'worven-groq-translate';
+const LOCAL_RATE_LIMIT_MAX_ENTRIES = 10_000;
 const groqRateLimitState = new Map<string, { count: number; resetAt: number }>();
 const GROQ_STRICT_JSON_SCHEMA_MODELS = new Set(['openai/gpt-oss-20b', 'openai/gpt-oss-120b']);
 
@@ -210,7 +213,26 @@ function getRequestIp(req: {
   return req.socket?.remoteAddress?.trim() || 'unknown';
 }
 
-function enforceGroqRateLimit(req: {
+function toHeaders(headers: RequestHeaders): Headers {
+  if (headers instanceof Headers) {
+    return headers;
+  }
+
+  const normalized = new Headers();
+  for (const [name, value] of Object.entries(headers ?? {})) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        normalized.append(name, item);
+      }
+    } else if (typeof value === 'string') {
+      normalized.set(name, value);
+    }
+  }
+
+  return normalized;
+}
+
+function enforceLocalGroqRateLimit(req: {
   headers?: RequestHeaders;
   socket?: { remoteAddress?: string | null };
 }) {
@@ -219,6 +241,22 @@ function enforceGroqRateLimit(req: {
   const existing = groqRateLimitState.get(ip);
 
   if (!existing || existing.resetAt <= now) {
+    if (groqRateLimitState.size >= LOCAL_RATE_LIMIT_MAX_ENTRIES) {
+      for (const [key, entry] of groqRateLimitState) {
+        if (entry.resetAt <= now) {
+          groqRateLimitState.delete(key);
+        }
+      }
+
+      while (groqRateLimitState.size >= LOCAL_RATE_LIMIT_MAX_ENTRIES) {
+        const oldestKey = groqRateLimitState.keys().next().value;
+        if (typeof oldestKey !== 'string') {
+          break;
+        }
+        groqRateLimitState.delete(oldestKey);
+      }
+    }
+
     groqRateLimitState.set(ip, {
       count: 1,
       resetAt: now + GROQ_RATE_LIMIT_WINDOW_MS,
@@ -234,6 +272,57 @@ function enforceGroqRateLimit(req: {
   }
 
   existing.count += 1;
+}
+
+async function enforceGroqRateLimit(req: {
+  headers?: RequestHeaders;
+  socket?: { remoteAddress?: string | null };
+}) {
+  if (process.env.VERCEL !== '1') {
+    enforceLocalGroqRateLimit(req);
+    return;
+  }
+
+  let result: Awaited<ReturnType<typeof checkRateLimit>>;
+  try {
+    result = await checkRateLimit(GROQ_RATE_LIMIT_ID, {
+      headers: toHeaders(req.headers),
+    });
+  } catch {
+    throw new ApiError(503, 'Translation rate limiting is temporarily unavailable.');
+  }
+
+  if (result.error === 'not-found') {
+    throw new ApiError(
+      503,
+      `Vercel Firewall rate limit "${GROQ_RATE_LIMIT_ID}" is not configured.`,
+    );
+  }
+
+  if (result.rateLimited) {
+    throw new ApiError(429, 'Too many Groq translation requests. Please try again shortly.', {
+      'Retry-After': String(GROQ_RATE_LIMIT_WINDOW_MS / 1000),
+    });
+  }
+}
+
+function isAllowedRequestOrigin(headers: RequestHeaders): boolean {
+  const origin = getHeaderValue(headers, 'origin');
+  if (!origin) {
+    return true;
+  }
+
+  const host =
+    getHeaderValue(headers, 'x-forwarded-host') ?? getHeaderValue(headers, 'host');
+  if (!host) {
+    return false;
+  }
+
+  try {
+    return new URL(origin).host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 function parseTranslateApiInput(value: unknown): TranslateApiInput {
@@ -979,7 +1068,16 @@ export async function handleTranslateApi(
     return false;
   }
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (!isAllowedRequestOrigin(req.headers)) {
+    jsonResponse(res, 403, { error: 'Cross-origin translation requests are not allowed.' });
+    return true;
+  }
+
+  const requestOrigin = getHeaderValue(req.headers, 'origin');
+  if (requestOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -1007,7 +1105,7 @@ export async function handleTranslateApi(
     const body = parseTranslateApiInput(parsedBody);
 
     if (body.provider === 'groq') {
-      enforceGroqRateLimit(req);
+      await enforceGroqRateLimit(req);
     }
 
     const result = await translateWithProvider(
