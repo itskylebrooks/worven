@@ -31,30 +31,35 @@ export async function translateWithProvider(
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest & { mode: 'word'; requestVerbConjugationExpansion: true },
+  signal?: AbortSignal,
 ): Promise<VerbConjugationExpansionPayload>;
 export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest & { mode: 'word' },
+  signal?: AbortSignal,
 ): Promise<WordTranslationPayload>;
 export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest & { mode: 'sentence' },
+  signal?: AbortSignal,
 ): Promise<SentenceTranslationPayload>;
 export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
+  signal?: AbortSignal,
 ): Promise<TranslationApiResult>;
 export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
+  signal?: AbortSignal,
 ): Promise<TranslationApiResult> {
   const response = await fetch('/api/translate', {
     method: 'POST',
@@ -67,6 +72,7 @@ export async function translateWithProvider(
       model,
       request,
     }),
+    signal,
   });
 
   let data: TranslateApiResponse | null = null;

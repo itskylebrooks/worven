@@ -7,109 +7,41 @@ import { OutputPanel } from './components/OutputPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { WordDetailsPanel } from './components/WordDetailsPanel';
 import { SUPPORTED_LANGUAGES } from './constants/languages';
-import { classifyInput } from './lib/classifier';
-import {
-  addHistoryItem,
-  clearHistory,
-  loadHistory,
-  removeHistoryItem,
-  updateHistoryItem,
-} from './lib/history';
-import { translateWithProvider } from './lib/providers';
+import { useAppSettings } from './hooks/useAppSettings';
+import { useTranslationController } from './hooks/useTranslationController';
 import { PROVIDER_LABELS } from './lib/provider-config';
-import {
-  applyTheme,
-  loadSettings,
-  loadSettingsSnapshot,
-  persistSettings,
-} from './lib/settings';
-import { buildTranslationRequest } from './lib/translation-request';
-import type {
-  AppSettings,
-  TranslationDirectionMode,
-  TranslationHistoryItem,
-  TranslationRequest,
-  TranslationResult,
-  VerbConjugationExpansionPayload,
-} from './types';
+import type { TranslationHistoryItem } from './types';
 
 const panelAccent = 'panel-shell';
 const INPUT_TEXTAREA_MIN_HEIGHT_PX = 56;
 
 export default function App() {
-  const [settings, setSettings] = useState<AppSettings>(() => loadSettingsSnapshot());
-  const [settingsHydrated, setSettingsHydrated] = useState(false);
-  const [directionMode, setDirectionMode] = useState<TranslationDirectionMode>('source_to_target');
-  const [sourceText, setSourceText] = useState('');
-  const [result, setResult] = useState<TranslationResult | null>(null);
-  const [sentenceAlternatives, setSentenceAlternatives] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingAlternative, setIsLoadingAlternative] = useState(false);
-  const [isLoadingVerbConjugation, setIsLoadingVerbConjugation] = useState(false);
-  const [historyItems, setHistoryItems] = useState<TranslationHistoryItem[]>(() => loadHistory());
-  const [activeHistoryItemId, setActiveHistoryItemId] = useState<string | null>(null);
+  const { settings, updateSettings } = useAppSettings();
+  const {
+    directionMode,
+    sourceText,
+    setSourceText,
+    result,
+    sentenceAlternatives,
+    error,
+    isLoading,
+    isLoadingAlternative,
+    isLoadingVerbConjugation,
+    historyItems,
+    translate: handleTranslate,
+    requestAlternative: handleAlternative,
+    expandVerbConjugation: handleVerbConjugationExpand,
+    clearInput,
+    toggleDirectionMode,
+    restoreHistoryItem,
+    removeHistoryItem,
+    clearHistory,
+  } = useTranslationController({ settings, updateSettings });
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyTimeoutRef = useRef<number | null>(null);
-  const hasLocalSettingsChanges = useRef(false);
-  const requestVersionRef = useRef(0);
   const sourceTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  function createHistoryItemId() {
-    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
-
-  function resolveSentenceAlternatives(
-    nextResult: TranslationResult,
-    fallbackAlternatives?: string[],
-  ) {
-    if (fallbackAlternatives && fallbackAlternatives.length > 0) {
-      return fallbackAlternatives;
-    }
-
-    return nextResult.mode === 'sentence' && nextResult.data.alternative
-      ? [nextResult.data.alternative]
-      : [];
-  }
-
-  function cancelPendingRequest() {
-    requestVersionRef.current += 1;
-  }
-
-  function clearTranslationSelection() {
-    setSentenceAlternatives([]);
-    setActiveHistoryItemId(null);
-  }
-
-  function resetRequestState() {
-    setIsLoading(false);
-    setIsLoadingAlternative(false);
-    setIsLoadingVerbConjugation(false);
-    setError(null);
-  }
-
-  function resetTranslationOutput(options?: { clearSourceText?: boolean }) {
-    resetRequestState();
-    clearTranslationSelection();
-    setResult(null);
-
-    if (options?.clearSourceText) {
-      setSourceText('');
-    }
-  }
-
-  function updateSettings(next: React.SetStateAction<AppSettings>) {
-    hasLocalSettingsChanges.current = true;
-    setSettings(next);
-  }
-
-  useEffect(() => {
-    applyTheme(settings.themeMode);
-  }, [settings.themeMode]);
 
   const syncSourceTextareaHeight = useCallback(() => {
     const textarea = sourceTextareaRef.current;
@@ -138,34 +70,6 @@ export default function App() {
     return () => window.removeEventListener('resize', syncSourceTextareaHeight);
   }, [syncSourceTextareaHeight]);
 
-  useEffect(() => {
-    let active = true;
-
-    void loadSettings().then((loadedSettings) => {
-      if (!active) {
-        return;
-      }
-
-      if (!hasLocalSettingsChanges.current) {
-        setSettings(loadedSettings);
-      }
-
-      setSettingsHydrated(true);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!settingsHydrated) {
-      return;
-    }
-
-    void persistSettings(settings);
-  }, [settings, settingsHydrated]);
-
   useEffect(
     () => () => {
       if (copyTimeoutRef.current) {
@@ -174,271 +78,6 @@ export default function App() {
     },
     [],
   );
-
-  useEffect(() => {
-    if (settings.themeMode !== 'system' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => applyTheme('system');
-
-    handleChange();
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [settings.themeMode]);
-
-  async function runTranslation(
-    request: TranslationRequest & { mode: 'word'; requestVerbConjugationExpansion: true },
-  ): Promise<VerbConjugationExpansionPayload>;
-  async function runTranslation(
-    request: TranslationRequest & { mode: 'word' },
-  ): Promise<Extract<TranslationResult, { mode: 'word' }>['data']>;
-  async function runTranslation(
-    request: TranslationRequest & { mode: 'sentence' },
-  ): Promise<Extract<TranslationResult, { mode: 'sentence' }>['data']>;
-  async function runTranslation(request: TranslationRequest) {
-    return translateWithProvider(
-      settings.provider,
-      settings.apiKeys[settings.provider],
-      settings.model,
-      request,
-    );
-  }
-
-  async function handleTranslate() {
-    const trimmed = sourceText.trim();
-    if (!trimmed) {
-      setError('Enter a word or sentence to translate.');
-      setResult(null);
-      return;
-    }
-
-    setError(null);
-    setIsLoading(true);
-    setIsLoadingAlternative(false);
-    clearTranslationSelection();
-
-    const mode = classifyInput(trimmed);
-    const requestVersion = ++requestVersionRef.current;
-    try {
-      const nextResult: TranslationResult =
-        mode === 'word'
-          ? {
-              mode,
-              data: await runTranslation(
-                buildTranslationRequest(settings, directionMode, {
-                  sourceText: trimmed,
-                  mode,
-                }),
-              ),
-              sourceText: trimmed,
-            }
-          : {
-              mode,
-              data: await runTranslation(
-                buildTranslationRequest(settings, directionMode, {
-                  sourceText: trimmed,
-                  mode,
-                }),
-              ),
-              sourceText: trimmed,
-            };
-      const nextHistoryItemId = createHistoryItemId();
-      const initialSentenceAlternatives = resolveSentenceAlternatives(nextResult);
-
-      if (requestVersion !== requestVersionRef.current) {
-        return;
-      }
-
-      setResult(nextResult);
-      setSentenceAlternatives(initialSentenceAlternatives);
-      setActiveHistoryItemId(nextHistoryItemId);
-      setHistoryItems(
-        addHistoryItem({
-          id: nextHistoryItemId,
-          createdAt: new Date().toISOString(),
-          sourceText: trimmed,
-          result: nextResult,
-          sentenceAlternatives: initialSentenceAlternatives,
-          provider: settings.provider,
-          model: settings.model,
-          nativeLanguage: settings.nativeLanguage,
-          targetLanguage: settings.targetLanguage,
-          context: settings.translationContext,
-          directionMode,
-        }),
-      );
-    } catch (translationError) {
-      if (requestVersion !== requestVersionRef.current) {
-        return;
-      }
-
-      setResult(null);
-      setError(
-        translationError instanceof Error
-          ? translationError.message
-          : 'Translation failed for an unknown reason.',
-      );
-    } finally {
-      if (requestVersion === requestVersionRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }
-
-  async function handleAlternative() {
-    if (!result || result.mode !== 'sentence' || !result.sourceText.trim()) {
-      return;
-    }
-
-    setError(null);
-    setIsLoadingAlternative(true);
-    const requestVersion = ++requestVersionRef.current;
-
-    try {
-      const payload = await runTranslation(
-        buildTranslationRequest(settings, directionMode, {
-          sourceText: result.sourceText,
-          mode: 'sentence',
-          requestAlternative: true,
-        }),
-      );
-
-      if (requestVersion !== requestVersionRef.current) {
-        return;
-      }
-
-      setResult({
-        mode: 'sentence',
-        sourceText: result.sourceText,
-        data: {
-          translation: payload.translation || result.data.translation,
-          alternative: result.data.alternative,
-        },
-      });
-      const nextAlternative = payload.alternative?.trim();
-      if (nextAlternative) {
-        setSentenceAlternatives((current) => {
-          const nextAlternatives = [...current, nextAlternative];
-
-          if (activeHistoryItemId) {
-            setHistoryItems(
-              updateHistoryItem(activeHistoryItemId, (entry) => ({
-                ...entry,
-                sentenceAlternatives: nextAlternatives,
-              })),
-            );
-          }
-
-          return nextAlternatives;
-        });
-      }
-    } catch (translationError) {
-      if (requestVersion !== requestVersionRef.current) {
-        return;
-      }
-
-      setError(
-        translationError instanceof Error
-          ? translationError.message
-          : 'Could not load an alternative translation.',
-      );
-    } finally {
-      if (requestVersion === requestVersionRef.current) {
-        setIsLoadingAlternative(false);
-      }
-    }
-  }
-
-  async function handleVerbConjugationExpand() {
-    if (
-      !result ||
-      result.mode !== 'word' ||
-      !result.data.verbConjugation ||
-      result.data.verbConjugation.coverage === 'full'
-    ) {
-      return;
-    }
-
-    setError(null);
-    setIsLoadingVerbConjugation(true);
-    const requestVersion = ++requestVersionRef.current;
-
-    try {
-      const payload = await runTranslation(
-        buildTranslationRequest(settings, directionMode, {
-          sourceText: result.sourceText,
-          mode: 'word',
-          requestVerbConjugationExpansion: true,
-        }),
-      );
-
-      if (requestVersion !== requestVersionRef.current) {
-        return;
-      }
-
-      setResult((current) => {
-        if (!current || current.mode !== 'word') {
-          return current;
-        }
-
-        return {
-          ...current,
-          data: {
-            ...current.data,
-            verbConjugation: payload.verbConjugation,
-          },
-        };
-      });
-
-      if (activeHistoryItemId) {
-        setHistoryItems(
-          updateHistoryItem(activeHistoryItemId, (entry) => {
-            if (entry.result.mode !== 'word') {
-              return entry;
-            }
-
-            return {
-              ...entry,
-              result: {
-                ...entry.result,
-                data: {
-                  ...entry.result.data,
-                  verbConjugation: payload.verbConjugation,
-                },
-              },
-            };
-          }),
-        );
-      }
-    } catch (translationError) {
-      if (requestVersion !== requestVersionRef.current) {
-        return;
-      }
-
-      setError(
-        translationError instanceof Error
-          ? translationError.message
-          : 'Could not load full verb conjugation tables.',
-      );
-    } finally {
-      if (requestVersion === requestVersionRef.current) {
-        setIsLoadingVerbConjugation(false);
-      }
-    }
-  }
-
-  function clearInput() {
-    cancelPendingRequest();
-    resetTranslationOutput({ clearSourceText: true });
-  }
 
   function handleTextareaKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -450,14 +89,6 @@ export default function App() {
       event.preventDefault();
       clearInput();
     }
-  }
-
-  function toggleDirectionMode() {
-    cancelPendingRequest();
-    setDirectionMode((current) =>
-      current === 'source_to_target' ? 'target_to_native' : 'source_to_target',
-    );
-    resetTranslationOutput();
   }
 
   const leftPanelLabel = directionMode === 'source_to_target' ? 'Source' : settings.targetLanguage;
@@ -484,7 +115,6 @@ export default function App() {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
         flashCopied(key);
-        return;
       }
     } catch {
       return;
@@ -492,21 +122,7 @@ export default function App() {
   }
 
   function handleRestoreHistoryItem(item: TranslationHistoryItem) {
-    cancelPendingRequest();
-    updateSettings((current) => ({
-      ...current,
-      provider: item.provider,
-      model: item.model,
-      nativeLanguage: item.nativeLanguage,
-      targetLanguage: item.targetLanguage,
-      translationContext: item.context,
-    }));
-    setDirectionMode(item.directionMode);
-    resetRequestState();
-    setSourceText(item.sourceText);
-    setResult(item.result);
-    setSentenceAlternatives(resolveSentenceAlternatives(item.result, item.sentenceAlternatives));
-    setActiveHistoryItemId(item.id);
+    restoreHistoryItem(item);
     setHistoryOpen(false);
   }
 
@@ -673,8 +289,8 @@ export default function App() {
         items={historyItems}
         onClose={() => setHistoryOpen(false)}
         onRestore={handleRestoreHistoryItem}
-        onDelete={(id) => setHistoryItems(removeHistoryItem(id))}
-        onClear={() => setHistoryItems(clearHistory())}
+        onDelete={removeHistoryItem}
+        onClear={clearHistory}
       />
     </div>
   );

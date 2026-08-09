@@ -325,8 +325,11 @@ pnpm ci
 
 ## Project Structure
 
-- [`src/App.tsx`](./src/App.tsx): main app state, translation flow, direction switching, history integration
+- [`src/App.tsx`](./src/App.tsx): UI composition and view-only interaction state
 - [`src/components`](./src/components): UI panels and modal components
+- [`src/hooks/useTranslationController.ts`](./src/hooks/useTranslationController.ts): cancellable translation workflow and operation state
+- [`src/hooks/useAppSettings.ts`](./src/hooks/useAppSettings.ts): settings hydration, persistence, and theme synchronization
+- [`src/hooks/useTranslationHistory.ts`](./src/hooks/useTranslationHistory.ts): history state and persistence coordination
 - [`src/lib/prompts.ts`](./src/lib/prompts.ts): prompt and JSON-schema generation
 - [`src/lib/provider-config.ts`](./src/lib/provider-config.ts): provider/model allowlists
 - [`src/lib/settings.ts`](./src/lib/settings.ts): settings defaults, migration, persistence, theme resolution
