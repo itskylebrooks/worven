@@ -5,31 +5,14 @@ import type {
   VerbConjugationExpansionPayload,
   WordTranslationPayload,
 } from '../types';
-
-type TranslateApiResult =
-  | WordTranslationPayload
-  | SentenceTranslationPayload
-  | VerbConjugationExpansionPayload;
+import {
+  isTranslationApiResultForRequest,
+  type TranslationApiResult,
+} from './translation-contract';
 
 interface TranslateApiResponse {
-  result?: TranslateApiResult;
+  result?: unknown;
   error?: string;
-}
-
-function isTranslateApiResult(value: unknown): value is TranslateApiResult {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  if ('primary' in value) {
-    return typeof value.primary === 'string';
-  }
-
-  if ('verbConjugation' in value) {
-    return true;
-  }
-
-  return 'translation' in value && typeof value.translation === 'string';
 }
 
 function parseTranslateApiResponse(value: unknown): TranslateApiResponse | null {
@@ -38,10 +21,9 @@ function parseTranslateApiResponse(value: unknown): TranslateApiResponse | null 
   }
 
   const candidate = value as Record<string, unknown>;
-  const result = isTranslateApiResult(candidate.result) ? candidate.result : undefined;
   const error = typeof candidate.error === 'string' ? candidate.error : undefined;
 
-  return { result, error };
+  return { result: candidate.result, error };
 }
 
 export async function translateWithProvider(
@@ -67,13 +49,13 @@ export async function translateWithProvider(
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
-): Promise<TranslateApiResult>;
+): Promise<TranslationApiResult>;
 export async function translateWithProvider(
   provider: ProviderId,
   apiKey: string | undefined,
   model: string,
   request: TranslationRequest,
-): Promise<TranslateApiResult> {
+): Promise<TranslationApiResult> {
   const response = await fetch('/api/translate', {
     method: 'POST',
     headers: {
@@ -99,8 +81,8 @@ export async function translateWithProvider(
     throw new Error(data?.error ?? `Translation request failed with status ${response.status}.`);
   }
 
-  if (!data?.result) {
-    throw new Error('Translation response was empty.');
+  if (!isTranslationApiResultForRequest(request, data?.result)) {
+    throw new Error('Translation response did not match the expected shape.');
   }
 
   return data.result;
