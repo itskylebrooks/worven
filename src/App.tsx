@@ -23,6 +23,7 @@ import {
   loadSettingsSnapshot,
   persistSettings,
 } from './lib/settings';
+import { buildTranslationRequest } from './lib/translation-request';
 import type {
   AppSettings,
   TranslationDirectionMode,
@@ -226,28 +227,27 @@ export default function App() {
 
     const mode = classifyInput(trimmed);
     const requestVersion = ++requestVersionRef.current;
-    const requestBase = {
-      sourceText: trimmed,
-      targetLanguage:
-        directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage,
-      nativeLanguage: settings.nativeLanguage,
-      context: settings.translationContext,
-      detailFocus: directionMode === 'source_to_target' ? 'target' : 'source',
-      sourceLanguageHint:
-        directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
-    } as const;
-
     try {
       const nextResult: TranslationResult =
         mode === 'word'
           ? {
               mode,
-              data: await runTranslation({ ...requestBase, mode }),
+              data: await runTranslation(
+                buildTranslationRequest(settings, directionMode, {
+                  sourceText: trimmed,
+                  mode,
+                }),
+              ),
               sourceText: trimmed,
             }
           : {
               mode,
-              data: await runTranslation({ ...requestBase, mode }),
+              data: await runTranslation(
+                buildTranslationRequest(settings, directionMode, {
+                  sourceText: trimmed,
+                  mode,
+                }),
+              ),
               sourceText: trimmed,
             };
       const nextHistoryItemId = createHistoryItemId();
@@ -303,14 +303,13 @@ export default function App() {
     const requestVersion = ++requestVersionRef.current;
 
     try {
-      const payload = await runTranslation({
-        sourceText: result.sourceText,
-        targetLanguage: settings.targetLanguage,
-        nativeLanguage: settings.nativeLanguage,
-        context: settings.translationContext,
-        mode: 'sentence',
-        requestAlternative: true,
-      });
+      const payload = await runTranslation(
+        buildTranslationRequest(settings, directionMode, {
+          sourceText: result.sourceText,
+          mode: 'sentence',
+          requestAlternative: true,
+        }),
+      );
 
       if (requestVersion !== requestVersionRef.current) {
         return;
@@ -373,18 +372,13 @@ export default function App() {
     const requestVersion = ++requestVersionRef.current;
 
     try {
-      const payload = await runTranslation({
-        sourceText: result.sourceText,
-        targetLanguage:
-          directionMode === 'source_to_target' ? settings.targetLanguage : settings.nativeLanguage,
-        nativeLanguage: settings.nativeLanguage,
-        context: settings.translationContext,
-        mode: 'word',
-        detailFocus: directionMode === 'source_to_target' ? 'target' : 'source',
-        sourceLanguageHint:
-          directionMode === 'source_to_target' ? settings.nativeLanguage : settings.targetLanguage,
-        requestVerbConjugationExpansion: true,
-      });
+      const payload = await runTranslation(
+        buildTranslationRequest(settings, directionMode, {
+          sourceText: result.sourceText,
+          mode: 'word',
+          requestVerbConjugationExpansion: true,
+        }),
+      );
 
       if (requestVersion !== requestVersionRef.current) {
         return;
