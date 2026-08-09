@@ -17,7 +17,13 @@ vi.mock('./secure-storage', () => ({
     (value as { scheme?: unknown }).scheme === 'aes-gcm',
 }));
 
-import { DEFAULT_SETTINGS, STORAGE_KEY, loadSettingsSnapshot, persistSettings } from './settings';
+import {
+  DEFAULT_SETTINGS,
+  SETTINGS_STORAGE_VERSION,
+  STORAGE_KEY,
+  loadSettingsSnapshot,
+  persistSettings,
+} from './settings';
 
 describe('settings provider defaults', () => {
   const storage = new Map<string, string>();
@@ -105,16 +111,41 @@ describe('settings provider defaults', () => {
     });
 
     const persisted = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}') as {
-      apiKeys?: Record<string, unknown>;
+      version?: number;
+      settings?: { apiKeys?: Record<string, unknown> };
     };
 
-    expect(persisted.apiKeys).toMatchObject({
+    expect(persisted.version).toBe(SETTINGS_STORAGE_VERSION);
+    expect(persisted.settings?.apiKeys).toMatchObject({
       groq: '',
       openai: {
         scheme: 'aes-gcm',
         iv: 'iv',
         ciphertext: 'enc:sk-test',
       },
+    });
+  });
+
+  it('falls back from invalid persisted domain values', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: SETTINGS_STORAGE_VERSION,
+        settings: {
+          ...DEFAULT_SETTINGS,
+          nativeLanguage: 'Invalid language',
+          targetLanguage: 'Invalid language',
+          translationContext: 'Invalid context',
+          themeMode: 'invalid-theme',
+        },
+      }),
+    );
+
+    expect(loadSettingsSnapshot()).toMatchObject({
+      nativeLanguage: DEFAULT_SETTINGS.nativeLanguage,
+      targetLanguage: DEFAULT_SETTINGS.targetLanguage,
+      translationContext: DEFAULT_SETTINGS.translationContext,
+      themeMode: DEFAULT_SETTINGS.themeMode,
     });
   });
 });

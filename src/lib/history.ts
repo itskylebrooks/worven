@@ -1,7 +1,6 @@
 import type {
   NounCaseData,
   NounCaseTable,
-  SentenceTranslationPayload,
   TranslationHistoryItem,
   TranslationResult,
   VerbConjugationCoverage,
@@ -9,9 +8,21 @@ import type {
   VerbConjugationTable,
   WordTranslationPayload,
 } from '../types';
+import {
+  isSentenceTranslationPayload,
+  isSupportedLanguage,
+  isTranslationContext,
+} from './translation-contract';
+import { PROVIDER_MODELS, isAllowedModel, isProviderId } from './provider-config';
 
 export const HISTORY_STORAGE_KEY = 'worven-history';
+export const HISTORY_STORAGE_VERSION = 1;
 const MAX_HISTORY_ITEMS = 40;
+
+interface PersistedHistoryEnvelope {
+  version: typeof HISTORY_STORAGE_VERSION;
+  items: TranslationHistoryItem[];
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -164,14 +175,6 @@ function normalizeNounCaseData(value: unknown): NounCaseData | null {
   return value.tables.length > 0 ? value : null;
 }
 
-function isSentenceTranslationPayload(value: unknown): value is SentenceTranslationPayload {
-  return (
-    isRecord(value) &&
-    typeof value.translation === 'string' &&
-    (typeof value.alternative === 'string' || value.alternative === null)
-  );
-}
-
 function isTranslationResult(value: unknown): value is TranslationResult {
   if (!isRecord(value) || typeof value.sourceText !== 'string') {
     return false;
@@ -196,12 +199,13 @@ function isTranslationHistoryItem(value: unknown): value is TranslationHistoryIt
   return (
     typeof value.id === 'string' &&
     typeof value.createdAt === 'string' &&
+    !Number.isNaN(Date.parse(value.createdAt)) &&
     typeof value.sourceText === 'string' &&
-    typeof value.provider === 'string' &&
+    isProviderId(value.provider) &&
     typeof value.model === 'string' &&
-    typeof value.nativeLanguage === 'string' &&
-    typeof value.targetLanguage === 'string' &&
-    typeof value.context === 'string' &&
+    isSupportedLanguage(value.nativeLanguage) &&
+    isSupportedLanguage(value.targetLanguage) &&
+    isTranslationContext(value.context) &&
     (typeof value.sentenceAlternatives === 'undefined' ||
       isStringArray(value.sentenceAlternatives)) &&
     (value.directionMode === 'source_to_target' || value.directionMode === 'target_to_native') &&
@@ -218,18 +222,15 @@ function normalizeHistoryItem(item: TranslationHistoryItem): TranslationHistoryI
         }
       : item.result;
 
-  if (Array.isArray(item.sentenceAlternatives)) {
-    return {
-      ...item,
-      result: normalizedResult,
-    };
-  }
-
   return {
     ...item,
+    model: isAllowedModel(item.provider, item.model)
+      ? item.model
+      : PROVIDER_MODELS[item.provider][0],
     result: normalizedResult,
-    sentenceAlternatives:
-      item.result.mode === 'sentence' && item.result.data.alternative
+    sentenceAlternatives: Array.isArray(item.sentenceAlternatives)
+      ? item.sentenceAlternatives
+      : item.result.mode === 'sentence' && item.result.data.alternative
         ? [item.result.data.alternative]
         : [],
   };
@@ -247,11 +248,22 @@ export function loadHistory(): TranslationHistoryItem[] {
     }
 
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
+    const persistedItems = Array.isArray(parsed)
+      ? parsed
+      : isRecord(parsed) &&
+          parsed.version === HISTORY_STORAGE_VERSION &&
+          Array.isArray(parsed.items)
+        ? parsed.items
+        : null;
+
+    if (!persistedItems) {
       return [];
     }
 
-    return parsed.filter(isTranslationHistoryItem).map((item) => normalizeHistoryItem(item));
+    return persistedItems
+      .filter(isTranslationHistoryItem)
+      .map((item) => normalizeHistoryItem(item))
+      .slice(0, MAX_HISTORY_ITEMS);
   } catch {
     return [];
   }
@@ -262,7 +274,11 @@ function persistHistory(history: TranslationHistoryItem[]) {
     return;
   }
 
-  window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+  const envelope: PersistedHistoryEnvelope = {
+    version: HISTORY_STORAGE_VERSION,
+    items: history.slice(0, MAX_HISTORY_ITEMS),
+  };
+  window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(envelope));
 }
 
 export function addHistoryItem(item: TranslationHistoryItem): TranslationHistoryItem[] {

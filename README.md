@@ -139,6 +139,7 @@ Worven is local-first:
 - settings are stored in browser storage
 - translation history is stored in `localStorage`
 - history is capped at 40 items
+- settings and history use versioned storage envelopes with load-time validation and legacy migration
 - client-provider API keys are encrypted with Web Crypto when the browser supports IndexedDB + `crypto.subtle`
 - the Groq key is never persisted in the browser
 

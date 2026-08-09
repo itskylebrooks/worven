@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { HISTORY_STORAGE_KEY, loadHistory } from './history';
+import {
+  HISTORY_STORAGE_KEY,
+  HISTORY_STORAGE_VERSION,
+  addHistoryItem,
+  loadHistory,
+} from './history';
 
 describe('history payload normalization', () => {
   const storage = new Map<string, string>();
@@ -142,5 +147,42 @@ describe('history payload normalization', () => {
       });
       expect(history[0].result.data.nounCases).toBeNull();
     }
+  });
+
+  it('persists a versioned envelope and rejects invalid domain values', () => {
+    const validItem = {
+      id: 'valid-entry',
+      createdAt: '2026-04-05T10:00:00.000Z',
+      sourceText: 'Hello there',
+      result: {
+        mode: 'sentence' as const,
+        sourceText: 'Hello there',
+        data: { translation: 'Hallo da', alternative: null },
+      },
+      provider: 'groq' as const,
+      model: 'llama-3.3-70b-versatile',
+      nativeLanguage: 'English',
+      targetLanguage: 'German',
+      context: 'General' as const,
+      directionMode: 'source_to_target' as const,
+    };
+
+    addHistoryItem(validItem);
+
+    const persisted = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? '{}') as {
+      version?: number;
+      items?: unknown[];
+    };
+    expect(persisted.version).toBe(HISTORY_STORAGE_VERSION);
+    expect(persisted.items).toHaveLength(1);
+
+    window.localStorage.setItem(
+      HISTORY_STORAGE_KEY,
+      JSON.stringify({
+        version: HISTORY_STORAGE_VERSION,
+        items: [{ ...validItem, context: 'Invalid context' }],
+      }),
+    );
+    expect(loadHistory()).toEqual([]);
   });
 });

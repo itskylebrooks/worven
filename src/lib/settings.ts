@@ -9,8 +9,14 @@ import {
 import { decryptValue, encryptValue, isEncryptedValue } from './secure-storage';
 import type { EncryptedValue } from './secure-storage';
 import type { AppSettings, ProviderId, ThemeMode } from '../types';
+import {
+  isRecord,
+  isSupportedLanguage,
+  isTranslationContext,
+} from './translation-contract';
 
 export const STORAGE_KEY = 'worven-settings';
+export const SETTINGS_STORAGE_VERSION = 1;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   provider: DEFAULT_PROVIDER,
@@ -29,8 +35,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 type PersistedApiKey = string | EncryptedValue;
 
-interface PersistedSettings extends Omit<AppSettings, 'apiKeys'> {
+interface PersistedSettings extends Partial<Omit<AppSettings, 'apiKeys'>> {
   apiKeys?: Partial<Record<ProviderId, PersistedApiKey | unknown>>;
+}
+
+interface PersistedSettingsEnvelope {
+  version: typeof SETTINGS_STORAGE_VERSION;
+  settings: PersistedSettings;
 }
 
 function recoverLegacyApiKeyValue(value: unknown, provider: ProviderId): string {
@@ -85,7 +96,19 @@ function readPersistedSettings(): PersistedSettings | null {
     return null;
   }
 
-  return JSON.parse(raw) as PersistedSettings;
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) {
+    return null;
+  }
+
+  if (
+    parsed.version === SETTINGS_STORAGE_VERSION &&
+    isRecord(parsed.settings)
+  ) {
+    return parsed.settings as PersistedSettings;
+  }
+
+  return parsed as PersistedSettings;
 }
 
 function getProviderSettings(
@@ -108,11 +131,24 @@ function normalizeStoredSettings(parsed: PersistedSettings | null): AppSettings 
   const { provider, model } = getProviderSettings(parsed);
 
   return {
-    ...DEFAULT_SETTINGS,
-    ...parsed,
     provider,
     model,
     apiKeys: normalizePlaintextApiKeys(parsed?.apiKeys),
+    nativeLanguage: isSupportedLanguage(parsed?.nativeLanguage)
+      ? parsed.nativeLanguage
+      : DEFAULT_SETTINGS.nativeLanguage,
+    targetLanguage: isSupportedLanguage(parsed?.targetLanguage)
+      ? parsed.targetLanguage
+      : DEFAULT_SETTINGS.targetLanguage,
+    translationContext: isTranslationContext(parsed?.translationContext)
+      ? parsed.translationContext
+      : DEFAULT_SETTINGS.translationContext,
+    themeMode:
+      parsed?.themeMode === 'system' ||
+      parsed?.themeMode === 'light' ||
+      parsed?.themeMode === 'dark'
+        ? parsed.themeMode
+        : DEFAULT_SETTINGS.themeMode,
   };
 }
 
@@ -213,7 +249,12 @@ export async function persistSettings(settings: AppSettings) {
       },
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedSettings));
+    const envelope: PersistedSettingsEnvelope = {
+      version: SETTINGS_STORAGE_VERSION,
+      settings: persistedSettings,
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
   } catch {
     if (currentSequence !== persistSequence) {
       return;
@@ -229,6 +270,11 @@ export async function persistSettings(settings: AppSettings) {
       },
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedSettings));
+    const envelope: PersistedSettingsEnvelope = {
+      version: SETTINGS_STORAGE_VERSION,
+      settings: persistedSettings,
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
   }
 }
