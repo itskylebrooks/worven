@@ -1,4 +1,5 @@
 import type { ProviderId } from '../../types.js';
+import { PROVIDER_LABELS } from '../../lib/provider-config.js';
 
 export class ProviderError extends Error {
   status: number;
@@ -13,7 +14,7 @@ export class ProviderError extends Error {
 }
 
 function providerLabel(provider: ProviderId) {
-  return provider.charAt(0).toUpperCase() + provider.slice(1);
+  return PROVIDER_LABELS[provider];
 }
 
 function mapUpstreamStatus(upstreamStatus: number) {
@@ -62,10 +63,7 @@ export function normalizeProviderFailure(provider: ProviderId, error: unknown): 
   }
 
   const label = providerLabel(provider);
-  if (
-    error instanceof Error &&
-    (error.name === 'AbortError' || error.name === 'TimeoutError')
-  ) {
+  if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
     return new ProviderError(504, `${label} did not respond before the request timed out.`);
   }
 

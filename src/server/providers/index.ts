@@ -1,5 +1,6 @@
 import type { ProviderId, TranslationRequest } from '../../types.js';
 import { callAnthropic } from './anthropic.js';
+import { callDeepSeek } from './deepseek.js';
 import { normalizeProviderFailure } from './errors.js';
 import { callGemini } from './gemini.js';
 import { callOpenAI } from './openai.js';
@@ -22,6 +23,8 @@ export async function callProvider(
         return await callAnthropic(apiKey, model, request);
       case 'gemini':
         return await callGemini(apiKey, model, request);
+      case 'deepseek':
+        return await callDeepSeek(apiKey, model, request);
     }
   } catch (error) {
     throw normalizeProviderFailure(provider, error);

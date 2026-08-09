@@ -68,27 +68,62 @@ describe('translation provider adapters', () => {
         ],
       },
     },
-  ])('normalizes the $provider response envelope', async ({
-    provider,
-    model,
-    endpoint,
-    responseBody,
-  }) => {
+    {
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      endpoint: 'https://api.deepseek.com/chat/completions',
+      responseBody: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ translation: 'Hallo da', alternative: null }),
+            },
+          },
+        ],
+      },
+    },
+  ])(
+    'normalizes the $provider response envelope',
+    async ({ provider, model, endpoint, responseBody }) => {
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify(responseBody), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      await expect(callProvider(provider, 'provider-key', model, request)).resolves.toEqual({
+        translation: 'Hallo da',
+        alternative: null,
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        endpoint,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    },
+  );
+
+  it('requests JSON output from DeepSeek', async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify(responseBody), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ translation: 'Hallo da', alternative: null }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
     );
 
-    await expect(callProvider(provider, 'provider-key', model, request)).resolves.toEqual({
-      translation: 'Hallo da',
-      alternative: null,
-    });
-    expect(fetchMock).toHaveBeenCalledWith(
-      endpoint,
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    await callProvider('deepseek', 'deepseek-key', 'deepseek-v4-flash', request);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(init?.body)) as { response_format?: unknown };
+    expect(body.response_format).toEqual({ type: 'json_object' });
   });
 
   it('maps a rejected client key to an authentication response', async () => {

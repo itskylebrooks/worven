@@ -16,6 +16,7 @@ const defaultSettings = {
     openai: '',
     anthropic: '',
     gemini: '',
+    deepseek: '',
   },
   nativeLanguage: 'English',
   targetLanguage: 'German',
@@ -33,9 +34,7 @@ describe('SettingsPanel PWA install UI', () => {
       install: vi.fn(),
     });
 
-    render(
-      <SettingsPanel open settings={defaultSettings} onClose={vi.fn()} onChange={vi.fn()} />,
-    );
+    render(<SettingsPanel open settings={defaultSettings} onClose={vi.fn()} onChange={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /install/i }));
 

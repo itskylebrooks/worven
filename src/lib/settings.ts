@@ -2,17 +2,14 @@ import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import {
   DEFAULT_MODEL,
   DEFAULT_PROVIDER,
+  PROVIDER_IDS,
   PROVIDER_MODELS,
   isProviderId,
 } from './provider-config';
 import { decryptValue, encryptValue, isEncryptedValue } from './secure-storage';
 import type { EncryptedValue } from './secure-storage';
 import type { AppSettings, ProviderId, ThemeMode } from '../types';
-import {
-  isRecord,
-  isSupportedLanguage,
-  isTranslationContext,
-} from './translation-contract';
+import { isRecord, isSupportedLanguage, isTranslationContext } from './translation-contract';
 
 export const STORAGE_KEY = 'worven-settings';
 export const SETTINGS_STORAGE_VERSION = 1;
@@ -20,11 +17,10 @@ export const SETTINGS_STORAGE_VERSION = 1;
 export const DEFAULT_SETTINGS: AppSettings = {
   provider: DEFAULT_PROVIDER,
   model: DEFAULT_MODEL,
-  apiKeys: {
-    openai: '',
-    anthropic: '',
-    gemini: '',
-  },
+  apiKeys: Object.fromEntries(PROVIDER_IDS.map((provider) => [provider, ''])) as Record<
+    ProviderId,
+    string
+  >,
   nativeLanguage: SUPPORTED_LANGUAGES[0],
   targetLanguage: 'German',
   translationContext: 'General',
@@ -70,17 +66,12 @@ function recoverLegacyApiKeyValue(value: unknown, provider: ProviderId): string 
 function normalizePlaintextApiKeys(
   apiKeys: Partial<Record<ProviderId, unknown>> | undefined,
 ): Record<ProviderId, string> {
-  return {
-    openai: isEncryptedValue(apiKeys?.openai)
-      ? ''
-      : recoverLegacyApiKeyValue(apiKeys?.openai, 'openai'),
-    anthropic: isEncryptedValue(apiKeys?.anthropic)
-      ? ''
-      : recoverLegacyApiKeyValue(apiKeys?.anthropic, 'anthropic'),
-    gemini: isEncryptedValue(apiKeys?.gemini)
-      ? ''
-      : recoverLegacyApiKeyValue(apiKeys?.gemini, 'gemini'),
-  };
+  return Object.fromEntries(
+    PROVIDER_IDS.map((provider) => {
+      const value = apiKeys?.[provider];
+      return [provider, isEncryptedValue(value) ? '' : recoverLegacyApiKeyValue(value, provider)];
+    }),
+  ) as Record<ProviderId, string>;
 }
 
 function readPersistedSettings(): PersistedSettings | null {
@@ -94,10 +85,7 @@ function readPersistedSettings(): PersistedSettings | null {
     return null;
   }
 
-  if (
-    parsed.version === SETTINGS_STORAGE_VERSION &&
-    isRecord(parsed.settings)
-  ) {
+  if (parsed.version === SETTINGS_STORAGE_VERSION && isRecord(parsed.settings)) {
     return parsed.settings as PersistedSettings;
   }
 
@@ -182,23 +170,21 @@ export async function loadSettings(): Promise<AppSettings> {
     const parsed = readPersistedSettings();
     const baseSettings = normalizeStoredSettings(parsed);
     const apiKeys = parsed?.apiKeys;
-    const openaiKey = apiKeys?.openai;
-    const anthropicKey = apiKeys?.anthropic;
-    const geminiKey = apiKeys?.gemini;
+    const decryptedApiKeys = await Promise.all(
+      PROVIDER_IDS.map(async (provider) => {
+        const value = apiKeys?.[provider];
+        return [
+          provider,
+          isEncryptedValue(value)
+            ? await decryptValue(value)
+            : recoverLegacyApiKeyValue(value, provider),
+        ] as const;
+      }),
+    );
 
     return {
       ...baseSettings,
-      apiKeys: {
-        openai: isEncryptedValue(openaiKey)
-          ? await decryptValue(openaiKey)
-          : recoverLegacyApiKeyValue(openaiKey, 'openai'),
-        anthropic: isEncryptedValue(anthropicKey)
-          ? await decryptValue(anthropicKey)
-          : recoverLegacyApiKeyValue(anthropicKey, 'anthropic'),
-        gemini: isEncryptedValue(geminiKey)
-          ? await decryptValue(geminiKey)
-          : recoverLegacyApiKeyValue(geminiKey, 'gemini'),
-      },
+      apiKeys: Object.fromEntries(decryptedApiKeys) as Record<ProviderId, string>,
     };
   } catch {
     return loadSettingsSnapshot();
@@ -215,13 +201,14 @@ export async function persistSettings(settings: AppSettings) {
   const currentSequence = ++persistSequence;
 
   try {
-    const encryptedApiKeys = {
-      openai: settings.apiKeys.openai.trim() ? await encryptValue(settings.apiKeys.openai) : '',
-      anthropic: settings.apiKeys.anthropic.trim()
-        ? await encryptValue(settings.apiKeys.anthropic)
-        : '',
-      gemini: settings.apiKeys.gemini.trim() ? await encryptValue(settings.apiKeys.gemini) : '',
-    };
+    const encryptedApiKeys = Object.fromEntries(
+      await Promise.all(
+        PROVIDER_IDS.map(async (provider) => [
+          provider,
+          settings.apiKeys[provider].trim() ? await encryptValue(settings.apiKeys[provider]) : '',
+        ]),
+      ),
+    ) as Record<ProviderId, PersistedApiKey>;
 
     if (currentSequence !== persistSequence) {
       return;
@@ -245,11 +232,7 @@ export async function persistSettings(settings: AppSettings) {
 
     const persistedSettings: PersistedSettings = {
       ...settings,
-      apiKeys: {
-        openai: '',
-        anthropic: '',
-        gemini: '',
-      },
+      apiKeys: Object.fromEntries(PROVIDER_IDS.map((provider) => [provider, ''])),
     };
 
     const envelope: PersistedSettingsEnvelope = {

@@ -50,7 +50,7 @@ describe('settings provider defaults', () => {
     expect(loadSettingsSnapshot()).toMatchObject({
       provider: 'openai',
       model: 'gpt-5.4-mini',
-      apiKeys: { openai: '', anthropic: '', gemini: '' },
+      apiKeys: { openai: '', anthropic: '', gemini: '', deepseek: '' },
     });
   });
 
@@ -66,6 +66,7 @@ describe('settings provider defaults', () => {
           openai: '',
           anthropic: '',
           gemini: '',
+          deepseek: '',
         },
       }),
     );
@@ -87,6 +88,7 @@ describe('settings provider defaults', () => {
           openai: '',
           anthropic: '',
           gemini: '',
+          deepseek: '',
         },
       }),
     );
@@ -104,6 +106,7 @@ describe('settings provider defaults', () => {
         openai: 'sk-test',
         anthropic: '',
         gemini: '',
+        deepseek: '',
       },
     });
 

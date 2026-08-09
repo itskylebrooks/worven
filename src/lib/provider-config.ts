@@ -18,6 +18,10 @@ export const PROVIDER_CONFIGS: Record<ProviderId, ProviderConfig> = {
     label: 'Gemini',
     models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
   },
+  deepseek: {
+    label: 'DeepSeek',
+    models: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+  },
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_CONFIGS) as ProviderId[];

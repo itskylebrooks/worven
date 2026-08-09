@@ -110,17 +110,19 @@ These context values are injected into the prompt sent to the selected model.
 
 ## Providers And Models
 
-Worven currently supports 3 providers:
+Worven currently supports 4 providers:
 
 - OpenAI
 - Anthropic
 - Gemini
+- DeepSeek
 
 Current allowed models by provider:
 
 - OpenAI: `gpt-5.4-mini`, `gpt-5.4-nano`
 - Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
 - Gemini: `gemini-2.5-flash`, `gemini-2.5-pro`
+- DeepSeek: `deepseek-v4-flash`, `deepseek-v4-pro`
 
 Every provider requires a user-supplied API key in Settings. Worven does not provide a free,
 shared, or server-funded translation option. The server validates provider IDs and models before
@@ -215,8 +217,8 @@ For real device install testing, local HTTPS is supported through `mkcert`.
 pnpm install
 ```
 
-No provider environment variables are required. Enter your own OpenAI, Anthropic, or Gemini API
-key in the app's Settings panel before translating.
+No provider environment variables are required. Enter your own provider API key in the app's
+Settings panel before translating.
 
 ### Run the app
 
