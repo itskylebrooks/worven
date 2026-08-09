@@ -82,6 +82,20 @@ describe('translation provider adapters', () => {
         ],
       },
     },
+    {
+      provider: 'xai',
+      model: 'grok-4.5',
+      endpoint: 'https://api.x.ai/v1/chat/completions',
+      responseBody: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ translation: 'Hallo da', alternative: null }),
+            },
+          },
+        ],
+      },
+    },
   ])(
     'normalizes the $provider response envelope',
     async ({ provider, model, endpoint, responseBody }) => {
@@ -124,6 +138,40 @@ describe('translation provider adapters', () => {
     const [, init] = fetchMock.mock.calls[0];
     const body = JSON.parse(String(init?.body)) as { response_format?: unknown };
     expect(body.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('requests strict structured output from xAI with low reasoning effort', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ translation: 'Hallo da', alternative: null }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    await callProvider('xai', 'xai-key', 'grok-4.5', request);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(init?.body)) as {
+      reasoning_effort?: unknown;
+      response_format?: unknown;
+    };
+    expect(body.reasoning_effort).toBe('low');
+    expect(body.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: {
+        name: 'sentence_translation',
+        schema: expect.any(Object),
+        strict: true,
+      },
+    });
   });
 
   it('maps a rejected client key to an authentication response', async () => {

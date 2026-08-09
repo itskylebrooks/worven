@@ -5,6 +5,7 @@ import { normalizeProviderFailure } from './errors.js';
 import { callGemini } from './gemini.js';
 import { callOpenAI } from './openai.js';
 import type { RawTranslationPayload } from './types.js';
+import { callXAI } from './xai.js';
 
 export { normalizeProviderFailure, ProviderError } from './errors.js';
 export type { RawTranslationPayload } from './types.js';
@@ -25,6 +26,8 @@ export async function callProvider(
         return await callGemini(apiKey, model, request);
       case 'deepseek':
         return await callDeepSeek(apiKey, model, request);
+      case 'xai':
+        return await callXAI(apiKey, model, request);
     }
   } catch (error) {
     throw normalizeProviderFailure(provider, error);

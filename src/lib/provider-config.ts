@@ -22,6 +22,10 @@ export const PROVIDER_CONFIGS: Record<ProviderId, ProviderConfig> = {
     label: 'DeepSeek',
     models: ['deepseek-v4-flash', 'deepseek-v4-pro'],
   },
+  xai: {
+    label: 'xAI',
+    models: ['grok-4.5', 'grok-4.3'],
+  },
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_CONFIGS) as ProviderId[];

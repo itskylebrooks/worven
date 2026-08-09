@@ -110,12 +110,13 @@ These context values are injected into the prompt sent to the selected model.
 
 ## Providers And Models
 
-Worven currently supports 4 providers:
+Worven currently supports 5 providers:
 
 - OpenAI
 - Anthropic
 - Gemini
 - DeepSeek
+- xAI
 
 Current allowed models by provider:
 
@@ -123,6 +124,7 @@ Current allowed models by provider:
 - Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
 - Gemini: `gemini-2.5-flash`, `gemini-2.5-pro`
 - DeepSeek: `deepseek-v4-flash`, `deepseek-v4-pro`
+- xAI: `grok-4.5`, `grok-4.3`
 
 Every provider requires a user-supplied API key in Settings. Worven does not provide a free,
 shared, or server-funded translation option. The server validates provider IDs and models before

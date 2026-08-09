@@ -17,6 +17,7 @@ const defaultSettings = {
     anthropic: '',
     gemini: '',
     deepseek: '',
+    xai: '',
   },
   nativeLanguage: 'English',
   targetLanguage: 'German',
@@ -93,6 +94,29 @@ describe('SettingsPanel PWA install UI', () => {
       expect.objectContaining({
         provider: 'anthropic',
         model: 'claude-sonnet-4-6',
+      }),
+    );
+  });
+
+  it('offers xAI with the current default Grok model', async () => {
+    usePWAMock.mockReturnValue({
+      isInstalled: false,
+      canInstall: false,
+      nativePromptAvailable: false,
+      installMode: 'unsupported',
+      install: vi.fn(),
+    });
+
+    const onChange = vi.fn();
+
+    render(<SettingsPanel open settings={defaultSettings} onClose={vi.fn()} onChange={onChange} />);
+
+    await userEvent.selectOptions(screen.getByLabelText(/provider/i), 'xai');
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'xai',
+        model: 'grok-4.5',
       }),
     );
   });
