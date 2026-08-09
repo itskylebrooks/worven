@@ -332,7 +332,9 @@ pnpm ci
 - [`src/lib/settings.ts`](./src/lib/settings.ts): settings defaults, migration, persistence, theme resolution
 - [`src/lib/history.ts`](./src/lib/history.ts): history persistence and legacy-data normalization
 - [`src/lib/secure-storage.ts`](./src/lib/secure-storage.ts): encrypted browser storage for client API keys
-- [`src/server/translate-api.ts`](./src/server/translate-api.ts): shared translation handler used by dev, preview, and Vercel
+- [`src/server/translate-api.ts`](./src/server/translate-api.ts): shared HTTP handler used by dev, preview, and Vercel
+- [`src/server/providers`](./src/server/providers): isolated upstream-provider adapters and error mapping
+- [`src/server/normalize-result.ts`](./src/server/normalize-result.ts): provider-response normalization
 - [`api/translate.ts`](./api/translate.ts): Vercel entry point
 
 ## Current Limitations

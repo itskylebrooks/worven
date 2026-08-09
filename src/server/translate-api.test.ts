@@ -457,7 +457,7 @@ describe('/api/translate', () => {
       res,
     );
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(422);
     expect(res.readJson()).toEqual({
       error: 'Refused for safety reasons.',
     });
