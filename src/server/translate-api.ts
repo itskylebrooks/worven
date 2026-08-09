@@ -1,11 +1,5 @@
-import { checkRateLimit } from '@vercel/firewall';
 import { isTranslationRequest } from '../lib/translation-contract.js';
-import {
-  isAllowedModel,
-  isProviderId,
-  providerUsesClientKey,
-  providerUsesServerKey,
-} from '../lib/provider-config.js';
+import { isAllowedModel, isProviderId } from '../lib/provider-config.js';
 import {
   callProvider,
   normalizeProviderFailure,
@@ -24,14 +18,8 @@ type TranslateApiInput = {
 type RequestChunk = { toString: (encoding?: string) => string } | string;
 type RequestHeaders = Headers | Record<string, string | string[] | undefined> | undefined;
 
-const MAX_GROQ_SOURCE_TEXT_LENGTH = 5000;
 const MAX_SOURCE_TEXT_LENGTH = 20_000;
 const MAX_REQUEST_BODY_BYTES = 64 * 1024;
-const GROQ_RATE_LIMIT_MAX_REQUESTS = 20;
-const GROQ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const GROQ_RATE_LIMIT_ID = 'worven-groq-translate';
-const LOCAL_RATE_LIMIT_MAX_ENTRIES = 10_000;
-const groqRateLimitState = new Map<string, { count: number; resetAt: number }>();
 
 class ApiError extends Error {
   status: number;
@@ -170,116 +158,6 @@ function getHeaderValue(headers: RequestHeaders, name: string): string | null {
   return typeof directValue === 'string' ? directValue : null;
 }
 
-function getRequestIp(req: {
-  headers?: RequestHeaders;
-  socket?: { remoteAddress?: string | null };
-}): string {
-  const forwardedFor = getHeaderValue(req.headers, 'x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0]?.trim() || 'unknown';
-  }
-
-  const realIp = getHeaderValue(req.headers, 'x-real-ip');
-  if (realIp) {
-    return realIp.trim();
-  }
-
-  return req.socket?.remoteAddress?.trim() || 'unknown';
-}
-
-function toHeaders(headers: RequestHeaders): Headers {
-  if (headers instanceof Headers) {
-    return headers;
-  }
-
-  const normalized = new Headers();
-  for (const [name, value] of Object.entries(headers ?? {})) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        normalized.append(name, item);
-      }
-    } else if (typeof value === 'string') {
-      normalized.set(name, value);
-    }
-  }
-
-  return normalized;
-}
-
-function enforceLocalGroqRateLimit(req: {
-  headers?: RequestHeaders;
-  socket?: { remoteAddress?: string | null };
-}) {
-  const ip = getRequestIp(req);
-  const now = Date.now();
-  const existing = groqRateLimitState.get(ip);
-
-  if (!existing || existing.resetAt <= now) {
-    if (groqRateLimitState.size >= LOCAL_RATE_LIMIT_MAX_ENTRIES) {
-      for (const [key, entry] of groqRateLimitState) {
-        if (entry.resetAt <= now) {
-          groqRateLimitState.delete(key);
-        }
-      }
-
-      while (groqRateLimitState.size >= LOCAL_RATE_LIMIT_MAX_ENTRIES) {
-        const oldestKey = groqRateLimitState.keys().next().value;
-        if (typeof oldestKey !== 'string') {
-          break;
-        }
-        groqRateLimitState.delete(oldestKey);
-      }
-    }
-
-    groqRateLimitState.set(ip, {
-      count: 1,
-      resetAt: now + GROQ_RATE_LIMIT_WINDOW_MS,
-    });
-    return;
-  }
-
-  if (existing.count >= GROQ_RATE_LIMIT_MAX_REQUESTS) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
-    throw new ApiError(429, 'Too many Groq translation requests. Please try again shortly.', {
-      'Retry-After': String(retryAfterSeconds),
-    });
-  }
-
-  existing.count += 1;
-}
-
-async function enforceGroqRateLimit(req: {
-  headers?: RequestHeaders;
-  socket?: { remoteAddress?: string | null };
-}) {
-  if (process.env.VERCEL !== '1') {
-    enforceLocalGroqRateLimit(req);
-    return;
-  }
-
-  let result: Awaited<ReturnType<typeof checkRateLimit>>;
-  try {
-    result = await checkRateLimit(GROQ_RATE_LIMIT_ID, {
-      headers: toHeaders(req.headers),
-    });
-  } catch {
-    throw new ApiError(503, 'Translation rate limiting is temporarily unavailable.');
-  }
-
-  if (result.error === 'not-found') {
-    throw new ApiError(
-      503,
-      `Vercel Firewall rate limit "${GROQ_RATE_LIMIT_ID}" is not configured.`,
-    );
-  }
-
-  if (result.rateLimited) {
-    throw new ApiError(429, 'Too many Groq translation requests. Please try again shortly.', {
-      'Retry-After': String(GROQ_RATE_LIMIT_WINDOW_MS / 1000),
-    });
-  }
-}
-
 function isAllowedRequestOrigin(headers: RequestHeaders): boolean {
   const origin = getHeaderValue(headers, 'origin');
   if (!origin) {
@@ -338,16 +216,6 @@ function parseTranslateApiInput(value: unknown): TranslateApiInput {
     );
   }
 
-  if (
-    provider === 'groq' &&
-    sourceTextLength > MAX_GROQ_SOURCE_TEXT_LENGTH
-  ) {
-    throw new ApiError(
-      400,
-      `Groq requests are limited to ${MAX_GROQ_SOURCE_TEXT_LENGTH} characters of source text.`,
-    );
-  }
-
   return {
     provider,
     model,
@@ -356,24 +224,12 @@ function parseTranslateApiInput(value: unknown): TranslateApiInput {
   };
 }
 
-function resolveProviderApiKey(provider: ProviderId, apiKey: string | undefined) {
-  if (providerUsesServerKey(provider)) {
-    const groqApiKey = process.env.GROQ_API_KEY?.trim();
-    if (!groqApiKey) {
-      throw new ApiError(
-        500,
-        'Groq is not configured on the server. Add GROQ_API_KEY to your environment variables.',
-      );
-    }
-
-    return groqApiKey;
-  }
-
-  if (providerUsesClientKey(provider) && !apiKey?.trim()) {
+function resolveProviderApiKey(apiKey: string | undefined) {
+  if (!apiKey?.trim()) {
     throw new ApiError(400, 'Add an API key for the selected provider in Settings before translating.');
   }
 
-  return apiKey?.trim() ?? '';
+  return apiKey.trim();
 }
 
 async function translateWithProvider(
@@ -382,7 +238,7 @@ async function translateWithProvider(
   model: string,
   request: TranslationRequest,
 ) {
-  const resolvedApiKey = resolveProviderApiKey(provider, apiKey);
+  const resolvedApiKey = resolveProviderApiKey(apiKey);
   const payload = await callProvider(provider, resolvedApiKey, model, request);
 
   try {
@@ -446,10 +302,6 @@ export async function handleTranslateApi(
     }
 
     const body = parseTranslateApiInput(parsedBody);
-
-    if (body.provider === 'groq') {
-      await enforceGroqRateLimit(req);
-    }
 
     const result = await translateWithProvider(
       body.provider,

@@ -52,7 +52,7 @@ The current UI includes:
 
 - provider selection
 - model selection per provider
-- API key input for client-key providers
+- API key input for every provider
 - native language selection
 - target language selection
 - translation context selection
@@ -67,8 +67,8 @@ The current UI includes:
 
 Default settings for a fresh install:
 
-- provider: `groq`
-- model: `llama-3.3-70b-versatile`
+- provider: `openai`
+- model: `gpt-5.4-mini`
 - native language: `English`
 - target language: `German`
 - translation context: `General`
@@ -110,25 +110,21 @@ These context values are injected into the prompt sent to the selected model.
 
 ## Providers And Models
 
-Worven currently supports 4 providers:
+Worven currently supports 3 providers:
 
-- Groq
 - OpenAI
 - Anthropic
 - Gemini
 
 Current allowed models by provider:
 
-- Groq: `llama-3.3-70b-versatile`, `openai/gpt-oss-20b`, `qwen/qwen3-32b`
 - OpenAI: `gpt-5.4-mini`, `gpt-5.4-nano`
 - Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
 - Gemini: `gemini-2.5-flash`, `gemini-2.5-pro`
 
-Provider behavior:
-
-- Groq uses a server-side `GROQ_API_KEY`
-- OpenAI, Anthropic, and Gemini use user-supplied keys from Settings
-- the server validates both provider IDs and models before making upstream calls
+Every provider requires a user-supplied API key in Settings. Worven does not provide a free,
+shared, or server-funded translation option. The server validates provider IDs and models before
+making upstream calls.
 
 ## Privacy And Local Storage
 
@@ -141,13 +137,12 @@ Worven is local-first:
 - history is capped at 40 items
 - settings and history use versioned storage envelopes with load-time validation and legacy migration
 - client-provider API keys are encrypted with Web Crypto when the browser supports IndexedDB + `crypto.subtle`
-- the Groq key is never persisted in the browser
 
 Implementation details:
 
 - encrypted keys use AES-GCM
 - the encryption key is stored in IndexedDB
-- if secure storage fails, Worven falls back to saving blank client keys rather than storing the Groq key
+- if secure storage fails, Worven saves blank key values instead of persisting plaintext secrets
 - history restore also restores the saved provider, model, direction mode, languages, and translation context
 
 ## API And Runtime Behavior
@@ -169,9 +164,8 @@ Current request handling details:
 - non-`POST` methods return `405`
 - browser requests are restricted to the app's own origin
 - request bodies are limited to 64 KiB and upstream calls time out after 30 seconds
-- Groq requests are limited to 5,000 characters of source text
-- Groq requests are rate-limited to 20 requests per 5 minutes per IP
-- local development uses a bounded in-memory limiter; Vercel uses its distributed Firewall
+- source text is limited to 20,000 characters
+- requests without a user-owned provider key are rejected before any upstream call
 
 ## PWA Support
 
@@ -221,32 +215,8 @@ For real device install testing, local HTTPS is supported through `mkcert`.
 pnpm install
 ```
 
-### Configure environment variables
-
-Create a local env file:
-
-```bash
-cp .env.example .env.local
-```
-
-Set:
-
-```bash
-GROQ_API_KEY=your-groq-key
-```
-
-`GROQ_API_KEY` must stay server-side. Do not prefix it with `VITE_`.
-
-For production on Vercel, create and publish a Firewall rule whose condition is
-`@vercel/firewall`, whose rate-limit ID is `worven-groq-translate`, and whose limit is 20
-requests per 5 minutes. Production Groq requests fail closed if that rule is missing or the
-Firewall check is unavailable.
-
-If the project is linked to Vercel, you can also pull development env vars with:
-
-```bash
-vercel env pull .env.local
-```
+No provider environment variables are required. Enter your own OpenAI, Anthropic, or Gemini API
+key in the app's Settings panel before translating.
 
 ### Run the app
 

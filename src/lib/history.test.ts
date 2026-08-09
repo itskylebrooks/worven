@@ -159,8 +159,8 @@ describe('history payload normalization', () => {
         sourceText: 'Hello there',
         data: { translation: 'Hallo da', alternative: null },
       },
-      provider: 'groq' as const,
-      model: 'llama-3.3-70b-versatile',
+      provider: 'openai' as const,
+      model: 'gpt-5.4-mini',
       nativeLanguage: 'English',
       targetLanguage: 'German',
       context: 'General' as const,
@@ -184,5 +184,34 @@ describe('history payload normalization', () => {
       }),
     );
     expect(loadHistory()).toEqual([]);
+  });
+
+  it('migrates legacy Groq history metadata to the default private provider', () => {
+    window.localStorage.setItem(
+      HISTORY_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'legacy-groq-entry',
+          createdAt: '2026-04-05T10:00:00.000Z',
+          sourceText: 'Hello there',
+          result: {
+            mode: 'sentence',
+            sourceText: 'Hello there',
+            data: { translation: 'Hallo da', alternative: null },
+          },
+          provider: 'groq',
+          model: 'llama-3.3-70b-versatile',
+          nativeLanguage: 'English',
+          targetLanguage: 'German',
+          context: 'General',
+          directionMode: 'source_to_target',
+        },
+      ]),
+    );
+
+    expect(loadHistory()[0]).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.4-mini',
+    });
   });
 });

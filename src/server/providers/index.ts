@@ -2,7 +2,6 @@ import type { ProviderId, TranslationRequest } from '../../types.js';
 import { callAnthropic } from './anthropic.js';
 import { normalizeProviderFailure } from './errors.js';
 import { callGemini } from './gemini.js';
-import { callGroq } from './groq.js';
 import { callOpenAI } from './openai.js';
 import type { RawTranslationPayload } from './types.js';
 
@@ -17,8 +16,6 @@ export async function callProvider(
 ): Promise<RawTranslationPayload> {
   try {
     switch (provider) {
-      case 'groq':
-        return await callGroq(apiKey, model, request);
       case 'openai':
         return await callOpenAI(apiKey, model, request);
       case 'anthropic':

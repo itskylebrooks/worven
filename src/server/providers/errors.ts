@@ -1,4 +1,3 @@
-import { providerUsesServerKey } from '../../lib/provider-config.js';
 import type { ProviderId } from '../../types.js';
 
 export class ProviderError extends Error {
@@ -17,12 +16,12 @@ function providerLabel(provider: ProviderId) {
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
-function mapUpstreamStatus(provider: ProviderId, upstreamStatus: number) {
+function mapUpstreamStatus(upstreamStatus: number) {
   if (upstreamStatus === 429) {
     return 429;
   }
 
-  if ((upstreamStatus === 401 || upstreamStatus === 403) && !providerUsesServerKey(provider)) {
+  if (upstreamStatus === 401 || upstreamStatus === 403) {
     return 401;
   }
 
@@ -47,15 +46,11 @@ export async function createProviderResponseError(
     upstreamMessage = undefined;
   }
 
-  const isServerKeyAuthFailure =
-    providerUsesServerKey(provider) && (response.status === 401 || response.status === 403);
-  const message = isServerKeyAuthFailure
-    ? `${label} authentication is not configured correctly on the server.`
-    : upstreamMessage ?? fallbackMessage;
+  const message = upstreamMessage ?? fallbackMessage;
   const retryAfter = response.headers.get('retry-after');
 
   return new ProviderError(
-    mapUpstreamStatus(provider, response.status),
+    mapUpstreamStatus(response.status),
     message,
     retryAfter ? { 'Retry-After': retryAfter } : undefined,
   );

@@ -10,10 +10,9 @@ vi.mock('../hooks/usePWA', () => ({
 }));
 
 const defaultSettings = {
-  provider: 'groq' as const,
-  model: 'llama-3.3-70b-versatile',
+  provider: 'openai' as const,
+  model: 'gpt-5.4-mini',
   apiKeys: {
-    groq: '',
     openai: '',
     anthropic: '',
     gemini: '',
@@ -61,7 +60,7 @@ describe('SettingsPanel PWA install UI', () => {
     expect(screen.getByRole('button', { name: /installed/i })).toBeDisabled();
   });
 
-  it('hides the API key input for Groq and shows the server-managed copy', () => {
+  it('always shows the API key input for the selected provider', () => {
     usePWAMock.mockReturnValue({
       isInstalled: false,
       canInstall: false,
@@ -72,11 +71,11 @@ describe('SettingsPanel PWA install UI', () => {
 
     render(<SettingsPanel open settings={defaultSettings} onClose={vi.fn()} onChange={vi.fn()} />);
 
-    expect(screen.queryByLabelText(/api key/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/runs through the worven server/i)).toBeVisible();
+    expect(screen.getByLabelText(/api key/i)).toBeVisible();
+    expect(screen.getByPlaceholderText(/paste openai key/i)).toBeVisible();
   });
 
-  it('shows the API key input after switching to a client-key provider', async () => {
+  it('switches to another private-key provider and its default model', async () => {
     usePWAMock.mockReturnValue({
       isInstalled: false,
       canInstall: false,
@@ -89,12 +88,12 @@ describe('SettingsPanel PWA install UI', () => {
 
     render(<SettingsPanel open settings={defaultSettings} onClose={vi.fn()} onChange={onChange} />);
 
-    await userEvent.selectOptions(screen.getByLabelText(/provider/i), 'openai');
+    await userEvent.selectOptions(screen.getByLabelText(/provider/i), 'anthropic');
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'openai',
-        model: 'gpt-5.4-mini',
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
       }),
     );
   });

@@ -46,43 +46,24 @@ describe('settings provider defaults', () => {
     });
   });
 
-  it('defaults fresh installs to Groq', () => {
+  it('defaults fresh installs to OpenAI without a key', () => {
     expect(loadSettingsSnapshot()).toMatchObject({
-      provider: 'groq',
-      model: 'llama-3.3-70b-versatile',
+      provider: 'openai',
+      model: 'gpt-5.4-mini',
+      apiKeys: { openai: '', anthropic: '', gemini: '' },
     });
   });
 
-  it('migrates legacy provider settings without a stored key to Groq', () => {
+  it('migrates legacy Groq settings to OpenAI', () => {
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         ...DEFAULT_SETTINGS,
-        provider: 'openai',
-        model: 'gpt-5.4-mini',
+        provider: 'groq',
+        model: 'llama-3.3-70b-versatile',
         apiKeys: {
+          groq: '',
           openai: '',
-          anthropic: '',
-          gemini: '',
-        },
-      }),
-    );
-
-    expect(loadSettingsSnapshot()).toMatchObject({
-      provider: 'groq',
-      model: 'llama-3.3-70b-versatile',
-    });
-  });
-
-  it('keeps a legacy client-key provider when a stored key exists', () => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        ...DEFAULT_SETTINGS,
-        provider: 'openai',
-        model: 'gpt-5.4-mini',
-        apiKeys: {
-          openai: 'sk-test',
           anthropic: '',
           gemini: '',
         },
@@ -92,18 +73,34 @@ describe('settings provider defaults', () => {
     expect(loadSettingsSnapshot()).toMatchObject({
       provider: 'openai',
       model: 'gpt-5.4-mini',
-      apiKeys: expect.objectContaining({
-        groq: '',
-        openai: 'sk-test',
-      }),
     });
   });
 
-  it('never persists a Groq key from the browser', async () => {
+  it('keeps a selected private-key provider even before a key is entered', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        apiKeys: {
+          openai: '',
+          anthropic: '',
+          gemini: '',
+        },
+      }),
+    );
+
+    expect(loadSettingsSnapshot()).toMatchObject({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+    });
+  });
+
+  it('encrypts user-owned provider keys before persistence', async () => {
     await persistSettings({
       ...DEFAULT_SETTINGS,
       apiKeys: {
-        groq: 'should-not-persist',
         openai: 'sk-test',
         anthropic: '',
         gemini: '',
@@ -117,7 +114,6 @@ describe('settings provider defaults', () => {
 
     expect(persisted.version).toBe(SETTINGS_STORAGE_VERSION);
     expect(persisted.settings?.apiKeys).toMatchObject({
-      groq: '',
       openai: {
         scheme: 'aes-gcm',
         iv: 'iv',

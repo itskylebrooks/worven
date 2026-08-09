@@ -13,7 +13,12 @@ import {
   isSupportedLanguage,
   isTranslationContext,
 } from './translation-contract';
-import { PROVIDER_MODELS, isAllowedModel, isProviderId } from './provider-config';
+import {
+  DEFAULT_PROVIDER,
+  PROVIDER_MODELS,
+  isAllowedModel,
+  isProviderId,
+} from './provider-config';
 
 export const HISTORY_STORAGE_KEY = 'worven-history';
 export const HISTORY_STORAGE_VERSION = 1;
@@ -23,6 +28,10 @@ interface PersistedHistoryEnvelope {
   version: typeof HISTORY_STORAGE_VERSION;
   items: TranslationHistoryItem[];
 }
+
+type LegacyTranslationHistoryItem = Omit<TranslationHistoryItem, 'provider'> & {
+  provider: TranslationHistoryItem['provider'] | 'groq';
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -191,7 +200,7 @@ function isTranslationResult(value: unknown): value is TranslationResult {
   return false;
 }
 
-function isTranslationHistoryItem(value: unknown): value is TranslationHistoryItem {
+function isTranslationHistoryItem(value: unknown): value is LegacyTranslationHistoryItem {
   if (!isRecord(value)) {
     return false;
   }
@@ -201,7 +210,7 @@ function isTranslationHistoryItem(value: unknown): value is TranslationHistoryIt
     typeof value.createdAt === 'string' &&
     !Number.isNaN(Date.parse(value.createdAt)) &&
     typeof value.sourceText === 'string' &&
-    isProviderId(value.provider) &&
+    (isProviderId(value.provider) || value.provider === 'groq') &&
     typeof value.model === 'string' &&
     isSupportedLanguage(value.nativeLanguage) &&
     isSupportedLanguage(value.targetLanguage) &&
@@ -213,7 +222,8 @@ function isTranslationHistoryItem(value: unknown): value is TranslationHistoryIt
   );
 }
 
-function normalizeHistoryItem(item: TranslationHistoryItem): TranslationHistoryItem {
+function normalizeHistoryItem(item: LegacyTranslationHistoryItem): TranslationHistoryItem {
+  const provider = item.provider === 'groq' ? DEFAULT_PROVIDER : item.provider;
   const normalizedResult =
     item.result.mode === 'word'
       ? {
@@ -224,9 +234,10 @@ function normalizeHistoryItem(item: TranslationHistoryItem): TranslationHistoryI
 
   return {
     ...item,
-    model: isAllowedModel(item.provider, item.model)
+    provider,
+    model: isAllowedModel(provider, item.model)
       ? item.model
-      : PROVIDER_MODELS[item.provider][0],
+      : PROVIDER_MODELS[provider][0],
     result: normalizedResult,
     sentenceAlternatives: Array.isArray(item.sentenceAlternatives)
       ? item.sentenceAlternatives

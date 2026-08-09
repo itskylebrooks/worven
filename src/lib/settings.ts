@@ -4,7 +4,6 @@ import {
   DEFAULT_PROVIDER,
   PROVIDER_MODELS,
   isProviderId,
-  providerUsesClientKey,
 } from './provider-config';
 import { decryptValue, encryptValue, isEncryptedValue } from './secure-storage';
 import type { EncryptedValue } from './secure-storage';
@@ -22,7 +21,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   provider: DEFAULT_PROVIDER,
   model: DEFAULT_MODEL,
   apiKeys: {
-    groq: '',
     openai: '',
     anthropic: '',
     gemini: '',
@@ -73,7 +71,6 @@ function normalizePlaintextApiKeys(
   apiKeys: Partial<Record<ProviderId, unknown>> | undefined,
 ): Record<ProviderId, string> {
   return {
-    groq: '',
     openai: isEncryptedValue(apiKeys?.openai)
       ? ''
       : recoverLegacyApiKeyValue(apiKeys?.openai, 'openai'),
@@ -84,10 +81,6 @@ function normalizePlaintextApiKeys(
       ? ''
       : recoverLegacyApiKeyValue(apiKeys?.gemini, 'gemini'),
   };
-}
-
-function hasStoredApiKey(value: unknown, provider: ProviderId) {
-  return isEncryptedValue(value) || recoverLegacyApiKeyValue(value, provider).length > 0;
 }
 
 function readPersistedSettings(): PersistedSettings | null {
@@ -114,12 +107,7 @@ function readPersistedSettings(): PersistedSettings | null {
 function getProviderSettings(
   parsed: PersistedSettings | null,
 ): Pick<AppSettings, 'provider' | 'model'> {
-  const requestedProvider = isProviderId(parsed?.provider) ? parsed.provider : DEFAULT_PROVIDER;
-  const provider =
-    providerUsesClientKey(requestedProvider) &&
-    !hasStoredApiKey(parsed?.apiKeys?.[requestedProvider], requestedProvider)
-      ? DEFAULT_PROVIDER
-      : requestedProvider;
+  const provider = isProviderId(parsed?.provider) ? parsed.provider : DEFAULT_PROVIDER;
   const availableModels = PROVIDER_MODELS[provider];
   const model =
     parsed?.model && availableModels.includes(parsed.model) ? parsed.model : availableModels[0];
@@ -201,7 +189,6 @@ export async function loadSettings(): Promise<AppSettings> {
     return {
       ...baseSettings,
       apiKeys: {
-        groq: '',
         openai: isEncryptedValue(openaiKey)
           ? await decryptValue(openaiKey)
           : recoverLegacyApiKeyValue(openaiKey, 'openai'),
@@ -229,7 +216,6 @@ export async function persistSettings(settings: AppSettings) {
 
   try {
     const encryptedApiKeys = {
-      groq: '',
       openai: settings.apiKeys.openai.trim() ? await encryptValue(settings.apiKeys.openai) : '',
       anthropic: settings.apiKeys.anthropic.trim()
         ? await encryptValue(settings.apiKeys.anthropic)
@@ -243,10 +229,7 @@ export async function persistSettings(settings: AppSettings) {
 
     const persistedSettings: PersistedSettings = {
       ...settings,
-      apiKeys: {
-        ...encryptedApiKeys,
-        groq: '',
-      },
+      apiKeys: encryptedApiKeys,
     };
 
     const envelope: PersistedSettingsEnvelope = {
@@ -263,7 +246,6 @@ export async function persistSettings(settings: AppSettings) {
     const persistedSettings: PersistedSettings = {
       ...settings,
       apiKeys: {
-        groq: '',
         openai: '',
         anthropic: '',
         gemini: '',
